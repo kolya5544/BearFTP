@@ -1,5 +1,5 @@
 # BearFTP
-##### Dare to hack a bear?
+#### Dare to hack a bear?
 
 BearFTP is a honeypot FTP server, designed to log hackers' attempts and report them to public IP blacklist databases.
 
@@ -42,20 +42,34 @@ $ dotnet BearFTP.dll
 The program should exit with an error. Proceed to editing the **config.json**
 ```json
 {
-  'PortDef': 21, <-- Replace with port you want to use for new connections (21 by default)
-  'PortPasv': 21, <-- Replace with port for PASV mode (1222 by default)
-  'Hostname': '127.0.0.1', <-- Replace with an actual public IPv4 of your PC/server. Used to initiate PASV connections. Please use IPv4, we dont support domains
-  'Token': '', <-- AbuseIPDB token to report bad ones
-  'Report': true, <-- Should we report suspicious actions?
-  'Ban': true, <-- Should we ban users on suspicious actions? (Ban is 1 hour long to prevent people from being double-reported)
-  'PunishScans': true, <-- Should we ban/report nmap scanners?
-  'Files': [{ <-- Array of files.
-    'Name': 'readme.txt', <-- Filename
-    'Content': 'Please, dont insert content which is more than 2048 bytes!' <-- Contents of files (string). No more than 2 kbs.
+  'PortDef': 21,
+  'PortPasv': 21,
+  'Hostname': '127.0.0.1',
+  'Token': '',
+  'Report': true,
+  'Ban': true,
+  'PunishScans': true,
+  'Files': [{
+    'Name': 'readme.txt',
+    'Content': 'Please, dont insert content which is more than 2048 bytes!'
   }],
-  'Banner': 'Welcome to FTP!' <-- Banner sent right after TCP handshake. %host% will be replaced with current hostname
+  'Banner': 'Welcome to FTP!'
 }
 ```
+| Key | Value |
+| ------ | ------ |
+| PortDef | Replace with port you want to use for new connections (21 by default) |
+| PortPasv | Replace with port for PASV mode (1222 by default) |
+| Hostname | Replace with an actual public IPv4 of your PC/server. Used to initiate PASV connections. Please use IPv4, we dont support domains |
+| Token | AbuseIPDB token to report bad ones |
+| Report | Should we report suspicious actions? |
+| Ban | Should we ban users on suspicious actions? (Ban is 1 hour long to prevent people from being double-reported) |
+| PunishScans | Should we ban/report nmap scanners? |
+| Files[] | Array of files. |
+| Files[Name] | Filename |
+| Files[Content] | Contents of files (string). No more than 2 kbs. |
+| Banner | Banner sent right after TCP handshake. %host% will be replaced with current hostname |
+
 To make it work, you should change PortPasv to any other value, so PortPasv is not equal to PortDef. Other options are optional.
 
 ### Development

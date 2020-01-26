@@ -42,7 +42,7 @@ namespace BearFTP
         public static Directory root = new Directory();
 
         //Current version
-        public static string _VERSION = "v0.0.1 BETA";
+        public static string _VERSION = "v0.0.2 BETA";
 
         //Default log.
         public static StreamWriter logfile = new StreamWriter("log.txt", true);
@@ -260,7 +260,7 @@ namespace BearFTP
 
             //Yes, it starts..
             Console.WriteLine("- FTP OpenSource HoneyPot Server " + _VERSION + " -");
-            Console.WriteLine("- By IKTeam -");
+            Console.WriteLine("- By IKTeam -> https://github.com/kolya5544/BearFTP -");
             Console.WriteLine("Checking for updates...");
             if (!CheckVersion())
             {
@@ -396,7 +396,7 @@ namespace BearFTP
                                     
                                     
                                 }
-                                if (answ.Length > 256)
+                                if (answ.Length > 64)
                                 {
                                     client.Close();
                                 }
@@ -446,7 +446,7 @@ namespace BearFTP
 
                                         }
                                         LogWrite("230 Successful login.\r\n", sw, hostname);
-                                        ns.ReadTimeout = 300000;
+                                        ns.ReadTimeout = 60000;
                                         Authed = true;
                                         c = new Client(username, password, hostname);
 
@@ -493,30 +493,6 @@ namespace BearFTP
                                             LogWrite("150 Ok to send data.\r\n", sw, hostname);
                                             Thread.Sleep(100);
                                             List<byte> filess = new List<byte>();
-                                            /*bool flagg = true;
-                                            while (flagg)
-                                            {
-                                                try
-                                                {
-                                                    int rr = connn.sr.ReadToEnd();
-                                                    if (rr == -1)
-                                                    {
-                                                        flagg = false;
-                                                    }
-                                                    else
-                                                    {
-                                                        filess.Add((byte)rr);
-                                                    }
-                                                    if (filess.Count > 1024 * 1024 * 32)
-                                                    {
-                                                        connn.tcp.Close();
-                                                    }
-                                                }
-                                                catch
-                                                {
-                                                    flagg = false;
-                                                }
-                                            }*/
                                             var bytes = default(byte[]);
                                             using (var memstream = new MemoryStream())
                                             {
@@ -598,15 +574,10 @@ namespace BearFTP
                                 }
                                 else if (answ.Trim() == "PASV" && Authed)
                                 {
-                                    //sw.Write("502 Command unavailable.\r\n");
                                     if (Authed && !passive)
                                     {
-
-
-
                                         LogWrite("227 Entering Passive Mode " + PasvInit(PortPasv, Hostname) + "\r\n", sw, hostname);
                                         c.passive = true;
-
                                     }
                                 }
                                 else if (answ.Trim().StartsWith("SIZE") && Authed)
@@ -687,7 +658,7 @@ namespace BearFTP
                                 }
                                 else if (answ.Trim().Contains("AUTH"))
                                 {
-                                    LogWrite("502 Please use plain FTP.\r\n", sw, hostname);
+                                    LogWrite("502 Please use plain FTP.\r\n", sw, hostname); // We dont want them to use security.
                                 }
                                 else if (Authed && username == "admin" && md5(password) == "")
                                 {
@@ -822,38 +793,17 @@ namespace BearFTP
         /// </summary>
         private static void InitializeFiles()
         {
-            /*
-            byte[] database = new byte[rnd.Next(100, 900)];
-            for (int i = 0; i < database.Length; i++)
+            
+            if (config.files.Count > 0)
             {
-                database[i] = (byte)rnd.Next(20, 150);
-            }
-            var file = new File("parsed1.db", database.Length, "-rw-r--r--", "Dec 1 16:58", database, root);
-            files.Add(file);
-            database = new byte[rnd.Next(100, 900)];
-            for (int i = 0; i < database.Length; i++)
+                foreach (CJSON_FILE json in config.files)
+                {
+                    File file = new File(json.Name, json.Content.Length, "-rw-r--r--", "Dec 1 15:11", json.Content, root);
+                    files.Add(file);
+                }
+            } else
             {
-                database[i] = (byte)rnd.Next(20, 150);
-            }
-            file = new File("sqlite.db", database.Length, "-rw-r--r--", "Dec 1 16:59", database, root);
-            files.Add(file);
-            for (int i = 0; i < database.Length; i++)
-            {
-                database[i] = (byte)rnd.Next(20, 150);
-            }
-            file = new File("users.db", database.Length, "-rw-r--r--", "Dec 1 16:59", database, root);
-            files.Add(file);
-            database = new byte[rnd.Next(50, 900)];
-            for (int i = 0; i < database.Length; i++)
-            {
-                database[i] = (byte)rnd.Next(20, 150);
-            }
-            file = new File("accounts.rar", database.Length, "-rw-r--r--", "Dec 1 16:57", database, root);
-            files.Add(file);
-            */
-            foreach (CJSON_FILE json in config.files)
-            {
-                File file = new File(json.Name, json.Content.Length, "-rw-r--r--", "Dec 1 15:11", json.Content, root);
+                File file = new File("readme.txt", 3, "-rw-r--r--", "Dec 1 15:10", "Hi!", root);
                 files.Add(file);
             }
         }
