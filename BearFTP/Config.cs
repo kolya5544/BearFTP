@@ -19,21 +19,21 @@ namespace BearFTP
         public string Banner = "Welcome to FTP!";
 
         public List<CJSON_FILE> files;
-
-        static string PlaceHolder = @"{
-  'PortDef': 21,
-  'PortPasv': 21,
-  'Hostname': '127.0.0.1',
-  'Token': '',
-  'Report': true,
-  'Ban': true,
-  'PunishScans': true,
-  'Files': [{
-    'Name': 'readme.txt',
-    'Content': 'Please, dont insert content which is more than 2048 bytes!'
-  }],
-  'Banner': 'Welcome to FTP!'
-}";
+        
+        static string PlaceHolder = "{\r\n"+
+  "\"PortDef\": 21,\r\n"+
+  "\"PortPasv\": 21,\r\n"+
+  "\"Hostname\": \"127.0.0.1\",\r\n" +
+  "\"Token\": \"\",\r\n" +
+  "\"Report\": true,\r\n" +
+  "\"Ban\": true,\r\n" +
+  "\"PunishScans\": true,\r\n" +
+  "\"Files\": [{\r\n" +
+  "  \"Name\": \"readme.txt\",\r\n" +
+  "  \"Content\": \"Please, dont insert content which is more than 2048 bytes!\"\r\n" +
+  "}],\r\n" +
+  "\"Banner\": \"Welcome to FTP!\"\r\n" +
+"}";
 
         public Config(string name)
         {

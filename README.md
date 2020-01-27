@@ -42,18 +42,18 @@ $ dotnet BearFTP.dll
 The program should exit with an error. Proceed to editing the **config.json**
 ```json
 {
-  'PortDef': 21,
-  'PortPasv': 21,
-  'Hostname': '127.0.0.1',
-  'Token': '',
-  'Report': true,
-  'Ban': true,
-  'PunishScans': true,
-  'Files': [{
-    'Name': 'readme.txt',
-    'Content': 'Please, dont insert content which is more than 2048 bytes!'
+  "PortDef": 21,
+  "PortPasv": 21,
+  "Hostname": "127.0.0.1",
+  "Token": "",
+  "Report": true,
+  "Ban": true,
+  "PunishScans": true,
+  "Files": [{
+    "Name": "readme.txt",
+    "Content": "Please, dont insert content which is more than 2048 bytes!"
   }],
-  'Banner': 'Welcome to FTP!'
+  "Banner": "Welcome to FTP!"
 }
 ```
 | Key | Value |
@@ -67,10 +67,11 @@ The program should exit with an error. Proceed to editing the **config.json**
 | PunishScans | Should we ban/report nmap scanners? |
 | Files[] | Array of files. |
 | Files[Name] | Filename |
-| Files[Content] | Contents of files (string). No more than 2 kbs. |
+| Files[Content] | Contents of files (string). Start with --- to make it load from a file (example: "---file.exe") |
 | Banner | Banner sent right after TCP handshake. %host% will be replaced with current hostname |
 
 To make it work, you should change PortPasv to any other value, so PortPasv is not equal to PortDef. Other options are optional.
+**We highly dont recommend using files with size of more than 4 MB! You should not use honeypot as a real FTP server to share files!**
 
 ### Development
 

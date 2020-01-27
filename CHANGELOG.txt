@@ -1,0 +1,8 @@
+--> IT ONLY CONTAINS THE MOST RECENT CHANGES!
+
+v0.1.0:
+- Ability to RECV files more than 2 kbs in size
+- Ability to add byte[] contents to files (a.k.a you can now send .exes over FTP)
+- JSON format fixed
+- Possible fix of unique characters breaking encoding of logs.
+- Download speed limited to 40 kbit/sec.

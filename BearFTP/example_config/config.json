@@ -1,19 +1,19 @@
 {
-  'PortDef': 21,
-  'PortPasv': 1222,
-  'Hostname': '145.239.82.241',
-  'Token': '',
-  'Report': true,
-  'Ban': true,
-  'PunishScans': true,
-  'Files': [
+  "PortDef": 21,
+  "PortPasv": 1222,
+  "Hostname": "145.239.82.241",
+  "Token": "",
+  "Report": true,
+  "Ban": true,
+  "PunishScans": true,
+  "Files": [
   {
-    'Name': 'sqlite.db',
-    'Content': 'You are not allowed to see the contents of this file!'
+    "Name": "sqlite.db",
+    "Content": "You are not allowed to see the contents of this file!"
   },
   {
-    'Name': 'parsed1.db',
-	'Content': 'You are not allowed to see the contents of this file!'
+    "Name": "parsed1.db",
+	"Content": "You are not allowed to see the contents of this file!"
   }],
-  'Banner': 'ProFTPd 1.3.5 Server [%host]'
+  "Banner": "ProFTPd 1.3.5 Server [%host%]"
 }

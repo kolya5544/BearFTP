@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Net.Sockets;
 using System.Threading;
 using System.Text.RegularExpressions;
@@ -42,7 +42,7 @@ namespace BearFTP
         public static Directory root = new Directory();
 
         //Current version
-        public static string _VERSION = "v0.0.2 BETA";
+        public static string _VERSION = "v0.1.0 BETA";
 
         //Default log.
         public static StreamWriter logfile = new StreamWriter("log.txt", true);
@@ -232,6 +232,8 @@ namespace BearFTP
             
             Builder += text;
 
+            Builder = Regex.Replace(Builder, @"[^\u0000-\u007F]+", " ");
+
             logfile.WriteLine(Builder);
             Console.WriteLine(Builder);
         }
@@ -259,7 +261,7 @@ namespace BearFTP
             }
 
             //Yes, it starts..
-            Console.WriteLine("- FTP OpenSource HoneyPot Server " + _VERSION + " -");
+            Console.WriteLine("- BearFTP OpenSource HoneyPot Server " + _VERSION + " -");
             Console.WriteLine("- By IKTeam -> https://github.com/kolya5544/BearFTP -");
             Console.WriteLine("Checking for updates...");
             if (!CheckVersion())
@@ -546,9 +548,11 @@ namespace BearFTP
                                             Thread.Sleep(1000);
                                             LogWrite("150 Ok to send data.\r\n", sw, hostname);
                                             Thread.Sleep(100);
-                                            byte[] file = aaaa.content;
-                                            char[] chars = Encoding.ASCII.GetChars(file);
-                                            connn.sw.Write(chars, 0, file.Length);
+                                            //       byte[] file = aaaa.content;
+                                           //Encoding.ASCII.GetChars(file);
+                                            //      connn.sw.Write(chars, 0, file.Length);
+                                            //      connn.tcp.Close();
+                                            SendFile(aaaa, connn.sw);
                                             connn.tcp.Close();
                                             Thread.Sleep(200);
                                             LogWrite("226 Transfer complete!\r\n", sw, hostname);
@@ -798,13 +802,67 @@ namespace BearFTP
             {
                 foreach (CJSON_FILE json in config.files)
                 {
-                    File file = new File(json.Name, json.Content.Length, "-rw-r--r--", "Dec 1 15:11", json.Content, root);
-                    files.Add(file);
+                    if (!json.Content.StartsWith("---"))
+                    {
+                        File file = new File(json.Name, json.Content.Length, "-rw-r--r--", "Dec 1 15:11", json.Content, root);
+                        files.Add(file);
+                    } else
+                    {
+                        try
+                        {
+                            var filecontents = System.IO.File.ReadAllBytes(json.Content.Substring(3, json.Content.Length - 3));
+                            File file = new File(json.Name, filecontents.Length, "-rw-r--r--", "Dec 1 15:11", filecontents, root);
+                            files.Add(file);
+                        } catch (Exception e)
+                        {
+                            Console.WriteLine(e.Message);
+                        }
+
+                    }
                 }
             } else
             {
                 File file = new File("readme.txt", 3, "-rw-r--r--", "Dec 1 15:10", "Hi!", root);
                 files.Add(file);
+            }
+            
+        }
+
+        /// <summary>
+        /// Sends contents of files in 2 kilobyte packs
+        /// </summary>
+        /// <param name="file">File to send</param>
+        /// <param name="sw">Actual StreamWriter of PASV mode</param>
+        public static void SendFile(File file, StreamWriter sw)
+        {
+            if (file.size <= 2048)
+            {
+                sw.BaseStream.Write(file.content, 0, file.size);
+            } else
+            {
+                //Ok boomer
+                //1. We calculate amount of steps (a.k.a how much should we do the loop)
+                //2. We calculate offtop based on steps we already passed
+                //3. We take 2048 bytes since that offtop and send them......
+                //it's hard but here's the actual code:
+
+                int Steps = 0;
+                int Offtop = 0;
+                int Leftover = 0;
+
+                byte[] buffer = new byte[2048];
+                Steps = Math.DivRem(file.size, 2048, out Leftover);
+                for(Offtop = 0; Offtop<Steps; Offtop++)
+                {
+                    Array.Copy(file.content, Offtop * 2048, buffer, 0, 2048);
+                    sw.BaseStream.Write(buffer, 0, buffer.Length);
+                    Thread.Sleep(50);  //Trying to limit possible attacks.
+                }
+                var last = new byte[file.size - Offtop *2048];
+                Array.Copy(file.content, file.size - Leftover, last, 0, Leftover);
+                sw.BaseStream.Write(last, 0, last.Length);
+                Thread.Sleep(50);
+                return;
             }
         }
     }
