@@ -42,13 +42,21 @@ namespace BearFTP
         public static Directory root = new Directory();
 
         //Current version
-        public static string _VERSION = "v0.1.0 BETA";
+        public static string _VERSION = "v0.2.0 BETA";
 
         //Default log.
         public static StreamWriter logfile = new StreamWriter("log.txt", true);
 
         //Dictionary of passvie clients (clients with PASV mode. Used to communicate directly later.)
         public static Dictionary<Client, Connectivity> passives = new Dictionary<Client, Connectivity>();
+
+        //List of connections per second from hostname
+        public static List<Active> per_second = new List<Active>();
+        //List of overall connections from hostname
+        public static List<Active> actives = new List<Active>();
+
+        //List of overall connections to PASV
+        public static List<Active> pasv_actives = new List<Active>();
 
         /// <summary>
         /// Reports an IP
@@ -296,6 +304,23 @@ namespace BearFTP
                     }
                 }
             })).Start();
+            //Connections per seconds (antibot) handling
+            new Thread(new ThreadStart(() => {
+                Thread.CurrentThread.IsBackground = true;
+
+                while (true)
+                {
+                    Thread.Sleep(1000);
+                    for (int i = 0; i < per_second.Count; i++)
+                    {
+                        if (per_second[i].connected > 0)
+                        {
+                            per_second[i].connected -= 1;
+                        }
+                    }
+                 //   Console.WriteLine("[DBG] Iterated per_second!");
+                }
+            })).Start();
             ftp.Start();
             pasv.Start();
             new Thread(() =>
@@ -312,6 +337,53 @@ namespace BearFTP
                     StreamWriter sw = new StreamWriter(ns);
 
                     sw.AutoFlush = true;
+                    string hostname = ((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString();
+                    if (Active.CheckExists(hostname, actives))
+                    {
+                        if (Active.GetConnections(hostname, actives) >= 5)
+                        {
+                            client.Close();
+                            if (Ban)
+                            {
+                                var aaa = new Ban();
+                                aaa.hostname = hostname;
+                                aaa.time = 3600;
+                                bans.Add(aaa);
+                            }
+                        }
+                        else
+                        {
+                            Active.SetConnections(hostname, actives, Active.GetConnections(hostname, actives) + 1);
+                        }
+                    }
+                    else
+                    {
+                        actives.Add(new Active(hostname, 1));
+                    }
+
+                    if (Active.CheckExists(hostname, per_second))
+                    {
+                        if (Active.GetConnections(hostname, per_second) >= 5)
+                        {
+                            client.Close();
+                            if (Ban)
+                            {
+                                var aaa = new Ban();
+                                aaa.hostname = hostname;
+                                aaa.time = 3600;
+                                bans.Add(aaa);
+                            }
+                        }
+                        else
+                        {
+                            Active.SetConnections(hostname, per_second, Active.GetConnections(hostname, per_second) + 1);
+                        }
+                    }
+                    else
+                    {
+                        per_second.Add(new Active(hostname, 1));
+                       
+                    }
 
                     new Thread(new ThreadStart(() =>
                     {
@@ -325,9 +397,9 @@ namespace BearFTP
                         string directory = "/";
                         bool Authed = false;
                         bool passive = false;
-                        int error = 10;
-                        string hostname = ((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString();
+                        int error = 5;
                         
+
                         //AbuseDBIP.com API
                         bool hacking = false;
                         bool bruteforce = false;
@@ -343,25 +415,26 @@ namespace BearFTP
                                 client.Close();
                             }
                         }
-                        catch { 
+                        catch
+                        {
 
                         }
 
-
+                        
 
                         try
                         {
                             Thread.Sleep(100);
                             Log("Connected - " + hostname, "in", true, hostname);
-                            LogWrite("220 "+config.Banner.Replace("%host%", Hostname)+"\r\n", sw, hostname);
-                            
+                            LogWrite("220 " + config.Banner.Replace("%host%", Hostname) + "\r\n", sw, hostname);
+
                             while (client.Connected)
                             {
                                 Thread.Sleep(100);
                                 //Receiving handler START
                                 string answ = "";
                                 bool flag = true;
-                                
+
                                 while (flag)
                                 {
                                     int a = sr.Read();
@@ -379,7 +452,7 @@ namespace BearFTP
                                 //Receiving handler END
 
                                 //Command processing.
-                                if (answ.Length > 3) //We dont want dummies to spam/DDoS.
+                                if (answ.Length >= 3) //We dont want dummies to spam/DDoS.
                                 {
                                     Log(answ, "in", true, hostname);
                                 }
@@ -393,12 +466,12 @@ namespace BearFTP
                                         bans.Add(aaa);
                                         client.Close();
                                     }
-                                    var a = ReportAsync(hostname, "["+DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss") + "] " + "System scanning (Proxy judging) using CONNECT or GET requests", false, false, true, true, false);
+                                    var a = ReportAsync(hostname, "[" + DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss") + "] " + "System scanning (Proxy judging) using CONNECT or GET requests", false, false, true, true, false);
                                     a.Start();
-                                    
-                                    
+
+
                                 }
-                                if (answ.Length > 64)
+                                if (answ.Length > 128)
                                 {
                                     client.Close();
                                 }
@@ -549,7 +622,7 @@ namespace BearFTP
                                             LogWrite("150 Ok to send data.\r\n", sw, hostname);
                                             Thread.Sleep(100);
                                             //       byte[] file = aaaa.content;
-                                           //Encoding.ASCII.GetChars(file);
+                                            //Encoding.ASCII.GetChars(file);
                                             //      connn.sw.Write(chars, 0, file.Length);
                                             //      connn.tcp.Close();
                                             SendFile(aaaa, connn.sw);
@@ -678,10 +751,14 @@ namespace BearFTP
                                 }
                                 else
                                 {
-                                    error--;
-                                    if (error <= 0)
+                                    if (answ.Length >= 3)
                                     {
-                                        client.Close();
+                                        error--;
+                                        if (error <= 0)
+                                        {
+                                            client.Close();
+                                        }
+
                                     }
                                 }
                                 if (answ.Contains("php") && triggered)
@@ -700,20 +777,22 @@ namespace BearFTP
                                         bans.Add(aaa);
                                         client.Close();
                                     }
-                                    var a = ReportAsync(hostname, "["+DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss") + "] " + "RCE Attempt at 21 port using ProFTPd exploit", true, false, false, false, false);
+                                    var a = ReportAsync(hostname, "[" + DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss") + "] " + "RCE Attempt at 21 port using ProFTPd exploit", true, false, false, false, false);
                                     a.Start();
-                                    
-                                    
+
+
 
                                 }
 
                             }
+
                         }
                         catch (Exception e)
                         {
                             client.Close();
                             c.Connected = false;
                         }
+                        Active.SetConnections(hostname, actives, Active.GetConnections(hostname, actives) - 1);
                     }
                     )).Start();
                 }
@@ -742,33 +821,89 @@ namespace BearFTP
                     StreamWriter sw = new StreamWriter(ns);
 
                     sw.AutoFlush = true;
-                    string hostname = "";
+                    string hostname = ((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString();
+
+                    try
+                    {
+                        if (bans.Any(ban => ban.hostname == hostname))
+                        {
+                            client.Close();
+                        }
+                    }
+                    catch
+                    {
+
+                    }
+
+                    if (Active.CheckExists(hostname, pasv_actives))
+                    {
+                        if (Active.GetConnections(hostname, pasv_actives) >= 3)
+                        {
+                            client.Close();
+                            if (Ban)
+                            {
+                                var aaa = new Ban();
+                                aaa.hostname = hostname;
+                                aaa.time = 3600;
+                                bans.Add(aaa);
+                            }
+                        }
+                        else
+                        {
+                            Active.SetConnections(hostname, pasv_actives, Active.GetConnections(hostname, pasv_actives) + 1);
+                        }
+                    }
+                    else
+                    {
+                        pasv_actives.Add(new Active(hostname, 1));
+                    }
                     Thread user = new Thread(new ThreadStart(() =>
                     {
                         Thread.CurrentThread.IsBackground = true;
 
                         Client c = new Client("1", "2", "3");
 
+                        
+
                         try
                         {
+                            bool ispresent = false;
                             foreach (Client cl in connected)
                             {
-                                if (cl.hostname == ((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString() && cl.Connected)
+                                if (cl.hostname == hostname && cl.Connected)
                                 {
                                     c = cl;
+                                    ispresent = true;
                                 }
                             }
-                            Connectivity ca = new Connectivity();
-                            ca.sr = sr;
-                            ca.sw = sw;
-                            ca.tcp = client;
-                            passives.Add(c, ca);
-                            while (client.Connected)
+                            if (!ispresent)
                             {
-                                Thread.Sleep(3000);
+                                client.Close();
+
                             }
-                            client.Close();
-                            passives.Remove(c);
+                            else
+                            {
+                                Connectivity ca = new Connectivity();
+                                ca.sr = sr;
+                                ca.sw = sw;
+                                ca.tcp = client;
+                                passives.Add(c, ca);
+                                /*  while (client.Connected)
+                                  {
+                                      Thread.Sleep(3000);
+                                  }*/
+                                for (int i = 0; client.Connected; i++)
+                                {
+                                    Thread.Sleep(1000);
+                                    if (i >= 120)
+                                    {
+                                        client.Close();
+                                        passives.Remove(c);
+                                    }
+                                }
+                                client.Close();
+                                passives.Remove(c);
+                            }
                         }
                         catch (Exception e)
                         {
@@ -778,7 +913,9 @@ namespace BearFTP
                                 passives.Remove(c);
                             }
                         }
+                        Active.SetConnections(hostname, pasv_actives, Active.GetConnections(hostname, pasv_actives) - 1);
                     }
+
                     ));
                     user.Start();
 

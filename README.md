@@ -83,7 +83,6 @@ Here's our CURRENT todo list:
 - Administrator commands (adding files right through FTP!)
 - Local command handler (execute FTP commands in your console, ban spamming IPs and such)
 - Implement directories
-- Implement support of files with size more than 2 kbs
 - Add more features (Active mode, more advanced ban system)
 
 

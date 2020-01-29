@@ -1,8 +1,10 @@
 --> IT ONLY CONTAINS THE MOST RECENT CHANGES!
 
-v0.1.0:
-- Ability to RECV files more than 2 kbs in size
-- Ability to add byte[] contents to files (a.k.a you can now send .exes over FTP)
-- JSON format fixed
-- Possible fix of unique characters breaking encoding of logs.
-- Download speed limited to 40 kbit/sec.
+v0.2.0:
+- Fixed "errors" handling, designed to prevent users spamming invalid FTP commands
+- Fixed PWN not being logged due to its size
+- Added "connections per second" and "total connections" antispam for default port
+- Added "total connections" antispam for PASV port
+- Fixed PASV mode handler not checking for default port connection, as well as fixed handling of non-active users (CVE-2020-8416 fix)
+- Passive mode now autodisconnects AFK persons after 120 seconds of inactivity (Beware when sending big files!)
+- Minor bugfixes
