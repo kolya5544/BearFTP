@@ -42,7 +42,7 @@ namespace BearFTP
         public static Directory root = new Directory();
 
         //Current version
-        public static string _VERSION = "v0.2.0 BETA";
+        public static string _VERSION = "v0.2.1 BETA";
 
         //Default log.
         public static StreamWriter logfile = new StreamWriter("log.txt", true);
@@ -384,6 +384,17 @@ namespace BearFTP
                         per_second.Add(new Active(hostname, 1));
                        
                     }
+                    try
+                    {
+                        if (bans.Any(ban => ban.hostname == hostname))
+                        {
+                            client.Close();
+                        }
+                    }
+                    catch
+                    {
+
+                    }
 
                     new Thread(new ThreadStart(() =>
                     {
@@ -408,17 +419,7 @@ namespace BearFTP
 
 
                         bool banned = false;
-                        try
-                        {
-                            if (bans.Any(ban => ban.hostname == hostname))
-                            {
-                                client.Close();
-                            }
-                        }
-                        catch
-                        {
-
-                        }
+                        
 
                         
 
@@ -558,6 +559,7 @@ namespace BearFTP
                                 }
                                 else if (answ.Trim().StartsWith("STOR") && Authed)
                                 {
+                                    Thread.Sleep(2000);
                                     if (passives.ContainsKey(c))
                                     {
                                         Connectivity connn;
@@ -603,6 +605,7 @@ namespace BearFTP
                                 }
                                 else if (answ.StartsWith("RETR") && Authed)
                                 {
+                                    Thread.Sleep(2000);
                                     string filename = answ.Substring(5).Trim().Replace("/", "");
                                     File aaaa = null;
                                     foreach (File aa in files)
@@ -722,18 +725,18 @@ namespace BearFTP
                                 {
                                     LogWrite("200 OK!\r\n", sw, hostname);
                                 }
-                                else if (answ.Contains("CPFR"))
+                                else if (answ.StartsWith("CPFR"))
                                 {
                                     //Fun part: tricking random exploiters. Very "hackers"
                                     triggered = true; //First level trigger
                                     LogWrite("350 Need more information.\r\n", sw, hostname);
                                 }
-                                else if (answ.Trim().Contains("CPTO") && triggered)
+                                else if (answ.Trim().StartsWith("CPTO") && triggered)
                                 {
                                     LogWrite("250 Need more information.\r\n", sw, hostname);
 
                                 }
-                                else if (answ.Trim().Contains("AUTH"))
+                                else if (answ.Trim().StartsWith("AUTH"))
                                 {
                                     LogWrite("502 Please use plain FTP.\r\n", sw, hostname); // We dont want them to use security.
                                 }
@@ -741,13 +744,16 @@ namespace BearFTP
                                 {
                                     //Todo: admin cmds
                                 }
-                                else if (Authed && answ.Trim().Contains("CLNT"))
+                                else if (answ.Trim().StartsWith("CLNT"))
                                 {
                                     LogWrite("200 OK!\r\n", sw, hostname);
                                 }
-                                else if (Authed && answ.Trim().Contains("NOOP"))
+                                else if (Authed && answ.Trim().StartsWith("NOOP"))
                                 {
                                     LogWrite("200 OK!\r\n", sw, hostname);
+                                } else if (Authed && answ.Trim().StartsWith("REST"))
+                                {
+                                    LogWrite("502 There is no such command.\r\n", sw, hostname);
                                 }
                                 else
                                 {
@@ -972,7 +978,7 @@ namespace BearFTP
         /// <param name="sw">Actual StreamWriter of PASV mode</param>
         public static void SendFile(File file, StreamWriter sw)
         {
-            if (file.size <= 2048)
+            if (file.size <= 8192)
             {
                 sw.BaseStream.Write(file.content, 0, file.size);
             } else
@@ -980,22 +986,22 @@ namespace BearFTP
                 //Ok boomer
                 //1. We calculate amount of steps (a.k.a how much should we do the loop)
                 //2. We calculate offtop based on steps we already passed
-                //3. We take 2048 bytes since that offtop and send them......
+                //3. We take 8192 bytes since that offtop and send them......
                 //it's hard but here's the actual code:
 
                 int Steps = 0;
                 int Offtop = 0;
                 int Leftover = 0;
 
-                byte[] buffer = new byte[2048];
-                Steps = Math.DivRem(file.size, 2048, out Leftover);
+                byte[] buffer = new byte[8192];
+                Steps = Math.DivRem(file.size, 8192, out Leftover);
                 for(Offtop = 0; Offtop<Steps; Offtop++)
                 {
-                    Array.Copy(file.content, Offtop * 2048, buffer, 0, 2048);
+                    Array.Copy(file.content, Offtop * 8192, buffer, 0, 8192);
                     sw.BaseStream.Write(buffer, 0, buffer.Length);
                     Thread.Sleep(50);  //Trying to limit possible attacks.
                 }
-                var last = new byte[file.size - Offtop *2048];
+                var last = new byte[file.size - Offtop * 8192];
                 Array.Copy(file.content, file.size - Leftover, last, 0, Leftover);
                 sw.BaseStream.Write(last, 0, last.Length);
                 Thread.Sleep(50);

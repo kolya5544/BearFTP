@@ -1,10 +1,9 @@
 --> IT ONLY CONTAINS THE MOST RECENT CHANGES!
 
-v0.2.0:
-- Fixed "errors" handling, designed to prevent users spamming invalid FTP commands
-- Fixed PWN not being logged due to its size
-- Added "connections per second" and "total connections" antispam for default port
-- Added "total connections" antispam for PASV port
-- Fixed PASV mode handler not checking for default port connection, as well as fixed handling of non-active users (CVE-2020-8416 fix)
-- Passive mode now autodisconnects AFK persons after 120 seconds of inactivity (Beware when sending big files!)
-- Minor bugfixes
+v0.2.1:
+- Bans fix
+- Fixed clients requesting RETR and STOR right after PASV without actually connecting to it properly (a.k.a high ping PASV fix) (There are still troubles with big files (more than 1 MB))
+- Minor fixes of improper command handling
+- Increased block size for RETR from 2048 to 8192‬, potentially increasing the speed of download
+- REST command handling (improper but still)
+- Fix of CLNT command
