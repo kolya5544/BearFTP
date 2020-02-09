@@ -10,4 +10,3 @@ v0.3.0:
 - Changeable bantime
 - Toggleable ban on big amount of errors (a.k.a some sort of service probe)
 - Moved default config to Resources
-- You can now dump whatever is sent through STOR

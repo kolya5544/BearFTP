@@ -168,9 +168,10 @@ namespace BearFTP
         /// <param name="text">String to send over socket</param>
         /// <param name="sw">StreamWriter of a TCPClient</param>
         /// <param name="IP">Hostname of receiver</param>
-        public static void LogWrite(string text, StreamWriter sw, string IP)
+        /// <param name="perip">PerIP StreamWriter</param>
+        public static void LogWrite(string text, StreamWriter sw, string IP, StreamWriter perip = null)
         {
-            Log(text.Trim().Replace("\r", String.Empty).Replace("\n", String.Empty).Trim(), "out", true, IP);
+            Log(text.Trim().Replace("\r", String.Empty).Replace("\n", String.Empty).Trim(), "out", true, IP, perip);
             sw.Write(text);
         }
 
@@ -489,7 +490,7 @@ namespace BearFTP
                         {
                             Thread.Sleep(100);
                             Log("Connected - " + hostname, "in", true, hostname, perip);
-                            LogWrite("220 " + Banner.Replace("%host%", Hostname) + "\r\n", sw, hostname);
+                            LogWrite("220 " + Banner.Replace("%host%", Hostname) + "\r\n", sw, hostname, perip);
 
                             while (client.Connected)
                             {
@@ -513,7 +514,7 @@ namespace BearFTP
                                     {
                                         flag = false;
                                     }
-                                    if (a == 20)
+                                    if (a == 0x20)
                                     {
                                         upper = false;
                                     }
@@ -528,7 +529,7 @@ namespace BearFTP
                                 //Command processing.
                                 if (answ.Length >= 3) //We dont want dummies to spam/DDoS.
                                 {
-                                    Log(answ, "in", true, hostname);
+                                    Log(answ, "in", true, hostname, perip);
                                 }
                                 if (answ.StartsWith("CONNECT") || answ.StartsWith("GET http"))
                                 {
@@ -551,7 +552,7 @@ namespace BearFTP
                                 }
                                 if (answ.StartsWith("OPTS"))
                                 {
-                                    LogWrite("200 Encoding successfully changed!\r\n", sw, hostname);
+                                    LogWrite("200 Encoding successfully changed!\r\n", sw, hostname, perip);
                                 }
                                 else if (answ.StartsWith("USER") && username.Length < 3 && !Authed)
                                 {
@@ -560,12 +561,12 @@ namespace BearFTP
                                     if (r.IsMatch(temp) && temp.Length < 32 && temp.Length > 1 && (temp != "anonymous" && !AllowAnonymous))
                                     {
                                         username = temp;
-                                        LogWrite("331 This user is protected with password\r\n", sw, hostname);
+                                        LogWrite("331 This user is protected with password\r\n", sw, hostname, perip);
 
                                     }
                                     else
                                     {
-                                        LogWrite("530 Wrong username or/and password.\r\n", sw, hostname);
+                                        LogWrite("530 Wrong username or/and password.\r\n", sw, hostname, perip);
                                         if (temp.Length > 128)
                                         {
                                             client.Close();
@@ -594,7 +595,7 @@ namespace BearFTP
 
 
                                         }
-                                        LogWrite("230 Successful login.\r\n", sw, hostname);
+                                        LogWrite("230 Successful login.\r\n", sw, hostname, perip);
                                         ns.ReadTimeout = 60000;
                                         Authed = true;
                                         c = new Client(username, password, hostname);
@@ -603,7 +604,7 @@ namespace BearFTP
                                     }
                                     else
                                     {
-                                        LogWrite("530 Wrong username or/and password.\r\n", sw, hostname);
+                                        LogWrite("530 Wrong username or/and password.\r\n", sw, hostname, perip);
                                         if (temp.Length > 128)
                                         {
                                             client.Close();
@@ -612,23 +613,23 @@ namespace BearFTP
                                 }
                                 else if (answ.Trim() == "SYST")
                                 {
-                                    LogWrite("215 UNIX Type: L8\r\n", sw, hostname);
+                                    LogWrite("215 UNIX Type: L8\r\n", sw, hostname, perip);
                                 }
                                 else if (answ.Trim() == "FEAT")
                                 {
-                                    LogWrite("502 Command unavailable.\r\n", sw, hostname);
+                                    LogWrite("502 Command unavailable.\r\n", sw, hostname, perip);
                                 }
                                 else if (answ.Trim() == "PWD")
                                 {
-                                    LogWrite("257 \"" + directory + "\" is the current working directory\r\n", sw, hostname);
+                                    LogWrite("257 \"" + directory + "\" is the current working directory\r\n", sw, hostname, perip);
                                 }
                                 else if (answ.Trim() == "PORT")
                                 {
-                                    LogWrite("502 Command unavailable.\r\n", sw, hostname);
+                                    LogWrite("502 Command unavailable.\r\n", sw, hostname, perip);
                                 }
                                 else if (answ.Trim().StartsWith("TYPE"))
                                 {
-                                    LogWrite("200 OK!\r\n", sw, hostname);
+                                    LogWrite("200 OK!\r\n", sw, hostname, perip);
                                 }
                                 else if (answ.Trim().StartsWith("STOR") && Authed)
                                 {
@@ -640,7 +641,7 @@ namespace BearFTP
                                         if (connn.tcp.Connected)
                                         {
                                             Thread.Sleep(1000);
-                                            LogWrite("150 Ok to send data.\r\n", sw, hostname);
+                                            LogWrite("150 Ok to send data.\r\n", sw, hostname, perip);
                                             Thread.Sleep(100);
                                             List<byte> filess = new List<byte>();
                                             var bytes = default(byte[]);
@@ -654,7 +655,7 @@ namespace BearFTP
                                             }
                                             System.IO.File.WriteAllBytes("dumps/dump_i" + rnd.Next(1, 2000000000).ToString() + ".txt", bytes);
                                             Thread.Sleep(200);
-                                            LogWrite("226 Transfer complete!\r\n", sw, hostname);
+                                            LogWrite("226 Transfer complete!\r\n", sw, hostname, perip);
 
                                             if (Ban)
                                             {
@@ -695,7 +696,7 @@ namespace BearFTP
                                         if (connn.tcp.Connected)
                                         {
                                             Thread.Sleep(1000);
-                                            LogWrite("150 Ok to send data.\r\n", sw, hostname);
+                                            LogWrite("150 Ok to send data.\r\n", sw, hostname, perip);
                                             Thread.Sleep(100);
                                             //       byte[] file = aaaa.content;
                                             //Encoding.ASCII.GetChars(file);
@@ -704,7 +705,7 @@ namespace BearFTP
                                             SendFile(aaaa, connn.sw);
                                             connn.tcp.Close();
                                             Thread.Sleep(200);
-                                            LogWrite("226 Transfer complete!\r\n", sw, hostname);
+                                            LogWrite("226 Transfer complete!\r\n", sw, hostname, perip);
 
                                             if (Ban)
                                             {
@@ -729,7 +730,7 @@ namespace BearFTP
                                 {
                                     if (Authed && !passive)
                                     {
-                                        LogWrite("227 Entering Passive Mode " + PasvInit(PortPasv, Hostname) + "\r\n", sw, hostname);
+                                        LogWrite("227 Entering Passive Mode " + PasvInit(PortPasv, Hostname) + "\r\n", sw, hostname, perip);
                                         c.passive = true;
                                     }
                                 }
@@ -746,7 +747,7 @@ namespace BearFTP
                                     }
                                     if (aaaa != null)
                                     {
-                                        LogWrite("213 " + aaaa.size.ToString(), sw, hostname);
+                                        LogWrite("213 " + aaaa.size.ToString(), sw, hostname, perip);
                                     }
                                 }
 
@@ -779,12 +780,12 @@ namespace BearFTP
                                                 Builder += " " + file.creation;
                                                 Builder += " " + file.name + "\r\n";
                                             }
-                                            LogWrite("150 Here comes the directory listing.\r\n", sw, hostname);
+                                            LogWrite("150 Here comes the directory listing.\r\n", sw, hostname, perip);
                                             Thread.Sleep(100);
                                             connn.sw.Write(Builder);
                                             connn.tcp.Close();
                                             Thread.Sleep(100);
-                                            LogWrite("226 Directory send OK\r\n", sw, hostname);
+                                            LogWrite("226 Directory send OK\r\n", sw, hostname, perip);
 
                                         }
                                         else
@@ -796,22 +797,22 @@ namespace BearFTP
                                 }
                                 else if (answ.StartsWith("CWD"))
                                 {
-                                    LogWrite("200 OK!\r\n", sw, hostname);
+                                    LogWrite("200 OK!\r\n", sw, hostname, perip);
                                 }
                                 else if (answ.StartsWith("CPFR"))
                                 {
                                     //Fun part: tricking random exploiters. Very "hackers"
                                     triggered = true; //First level trigger
-                                    LogWrite("350 Need more information.\r\n", sw, hostname);
+                                    LogWrite("350 Need more information.\r\n", sw, hostname, perip);
                                 }
                                 else if (answ.Trim().StartsWith("CPTO") && triggered)
                                 {
-                                    LogWrite("250 Need more information.\r\n", sw, hostname);
+                                    LogWrite("250 Need more information.\r\n", sw, hostname, perip);
 
                                 }
                                 else if (answ.Trim().StartsWith("AUTH"))
                                 {
-                                    LogWrite("502 Please use plain FTP.\r\n", sw, hostname); // We dont want them to use security.
+                                    LogWrite("502 Please use plain FTP.\r\n", sw, hostname, perip); // We dont want them to use security.
                                 }
                                 else if (Authed && username == "admin" && md5(password) == "")
                                 {
@@ -819,14 +820,14 @@ namespace BearFTP
                                 }
                                 else if (answ.Trim().StartsWith("CLNT"))
                                 {
-                                    LogWrite("200 OK!\r\n", sw, hostname);
+                                    LogWrite("200 OK!\r\n", sw, hostname, perip);
                                 }
                                 else if (Authed && answ.Trim().StartsWith("NOOP"))
                                 {
-                                    LogWrite("200 OK!\r\n", sw, hostname);
+                                    LogWrite("200 OK!\r\n", sw, hostname, perip);
                                 } else if (Authed && answ.Trim().StartsWith("REST"))
                                 {
-                                    LogWrite("502 There is no such command.\r\n", sw, hostname);
+                                    LogWrite("502 There is no such command.\r\n", sw, hostname, perip);
                                 }
                                 else
                                 {
@@ -846,8 +847,8 @@ namespace BearFTP
                                 }
                                 if (trigger2)
                                 {
-                                    LogWrite("110 Illegal activity was detected.\r\n", sw, hostname);
-                                    LogWrite("110 Please, log off now.\r\n", sw, hostname);
+                                    LogWrite("110 Illegal activity was detected.\r\n", sw, hostname, perip);
+                                    LogWrite("110 Please, log off now.\r\n", sw, hostname, perip);
                                     if (Ban)
                                     {
                                         var aaa = new Ban();
