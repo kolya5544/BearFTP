@@ -1,0 +1,21 @@
+{
+  "PortDef": 21,
+  "PortPasv": 21,
+  "Hostname": "127.0.0.1",
+  "Banner": "My very own FTP server located at %host%",
+  "Token": "",
+  "Report": true,
+  "Ban": true,
+  "PunishScans": true,
+  "AllowAnonymous": false,
+  "Max_PerSecond": 5,
+  "Max_Total": 6,
+  "BanLength": 3600,
+  "MaxErrors": 6,
+  "BufferSize": 8192,
+  "Files": [
+  {
+    "Name": "readme.txt",
+    "Content": "Hello!"
+  }]
+}

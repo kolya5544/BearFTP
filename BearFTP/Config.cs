@@ -20,7 +20,7 @@ namespace BearFTP
 
         public List<CJSON_FILE> files;
         
-        static string PlaceHolder = "{\r\n"+
+  /*      static string PlaceHolder = "{\r\n"+
   "\"PortDef\": 21,\r\n"+
   "\"PortPasv\": 21,\r\n"+
   "\"Hostname\": \"127.0.0.1\",\r\n" +
@@ -33,11 +33,12 @@ namespace BearFTP
   "  \"Content\": \"Please, dont insert content which is more than 2048 bytes!\"\r\n" +
   "}],\r\n" +
   "\"Banner\": \"Welcome to FTP!\"\r\n" +
-"}";
+"}";*/
 
         public Config(string name)
         {
             CJSON json = null;
+            string Placeholder = Properties.Resources.ConfigFile;
             try
             {
                 if (System.IO.File.Exists(name))
@@ -47,8 +48,8 @@ namespace BearFTP
                 }
                 else
                 {
-                    json = JsonConvert.DeserializeObject<CJSON>(PlaceHolder);
-                    System.IO.File.WriteAllText(name, PlaceHolder);
+                    json = JsonConvert.DeserializeObject<CJSON>(Placeholder);
+                    System.IO.File.WriteAllText(name, Placeholder);
                 }
                 PortDef = json.PortDef;
                 PortPasv = json.PortPasv;
@@ -84,10 +85,16 @@ namespace BearFTP
         public int PortPasv { get; set; }
         public string Hostname { get; set; }
         public string Token { get; set; }
+        public string Banner { get; set; }
         public bool Report { get; set; }
         public bool Ban { get; set; }
         public bool PunishScans { get; set; }
+        public bool AllowAnonymous { get; set; }
+        public int Max_PerSecond { get; set; }
+        public int Max_Total { get; set; }
+        public int BanLength { get; set; }
+        public int MaxErrors { get; set; }
+        public int BufferSize { get; set; }
         public List<CJSON_FILE> Files { get; set; }
-        public string Banner { get; set; }
     }
 }
