@@ -51,7 +51,7 @@ namespace BearFTP
         public static Directory root = new Directory();
 
         //Current version
-        public static string _VERSION = "v0.3.0 BETA";
+        public static string _VERSION = "v0.3.1 BETA";
 
         //Default log.
         public static StreamWriter logfile = new StreamWriter("log.txt", true);
