@@ -42,7 +42,7 @@ namespace BearFTP
         public static Directory root = new Directory();
 
         //Current version
-        public static string _VERSION = "v0.2.1 BETA";
+        public static string _VERSION = "v0.3.0 BETA";
 
         //Default log.
         public static StreamWriter logfile = new StreamWriter("log.txt", true);
@@ -240,7 +240,7 @@ namespace BearFTP
             
             Builder += text;
 
-            Builder = Regex.Replace(Builder, @"[^\u0000-\u007F]+", " ");
+            Builder = Regex.Replace(Builder, @"[^\u0020-\u007E]", " ");
 
             logfile.WriteLine(Builder);
             Console.WriteLine(Builder);
@@ -435,16 +435,27 @@ namespace BearFTP
                                 //Receiving handler START
                                 string answ = "";
                                 bool flag = true;
+                                bool upper = true;
 
                                 while (flag)
                                 {
                                     int a = sr.Read();
-                                    answ += (char)a;
-                                    if (a == 10 || a == 13)
+                                    if (upper)
+                                    {
+                                        answ += char.ToUpper((char)a);
+                                    } else
+                                    {
+                                        answ += (char)a;
+                                    }
+                                    if (a == 13)
                                     {
                                         flag = false;
                                     }
-                                    if (answ.Length > 1024)
+                                    if (a == 20)
+                                    {
+                                        upper = false;
+                                    }
+                                    if (answ.Length > 128)
                                     {
                                         client.Close();
                                     }
@@ -457,7 +468,7 @@ namespace BearFTP
                                 {
                                     Log(answ, "in", true, hostname);
                                 }
-                                if (answ.Contains("CONNECT") || answ.StartsWith("GET http"))
+                                if (answ.StartsWith("CONNECT") || answ.StartsWith("GET http"))
                                 {
                                     if (Ban)
                                     {

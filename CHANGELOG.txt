@@ -1,9 +1,8 @@
 --> IT ONLY CONTAINS THE MOST RECENT CHANGES!
 
-v0.2.1:
-- Bans fix
-- Fixed clients requesting RETR and STOR right after PASV without actually connecting to it properly (a.k.a high ping PASV fix) (There are still troubles with big files (more than 1 MB))
-- Minor fixes of improper command handling
-- Increased block size for RETR from 2048 to 8192‬, potentially increasing the speed of download
-- REST command handling (improper but still)
-- Fix of CLNT command
+v0.3.0:
+- Toggleable anonymous logins
+- Per-IP logs (create "logs" folder)
+- Max connections per second and max active connections are now changeable
+- Buffer size can now be changed (def.8192)
+- Fixed lower-case command handling (+)
