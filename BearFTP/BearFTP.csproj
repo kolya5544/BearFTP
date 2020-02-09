@@ -17,12 +17,16 @@
 
   <ItemGroup>
 <<<<<<< HEAD
+<<<<<<< HEAD
     <EmbeddedResource Update="Properties\Resources.resx">
       <Generator>PublicResXFileCodeGenerator</Generator>
     </EmbeddedResource>
   </ItemGroup>
 
 =======
+=======
+
+>>>>>>> b47908e4080a99ca1e12671999b960b30a491000
     <Compile Update="Properties\Resources.Designer.cs">
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
@@ -41,5 +45,8 @@
     <Folder Include="Resources\" />
   </ItemGroup>
 
+<<<<<<< HEAD
 >>>>>>> dev
+=======
+>>>>>>> b47908e4080a99ca1e12671999b960b30a491000
 </Project>
