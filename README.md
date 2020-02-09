@@ -45,15 +45,23 @@ The program should exit with an error. Proceed to editing the **config.json**
   "PortDef": 21,
   "PortPasv": 21,
   "Hostname": "127.0.0.1",
+  "Banner": "My very own FTP server located at %host%",
   "Token": "",
   "Report": true,
   "Ban": true,
   "PunishScans": true,
-  "Files": [{
+  "AllowAnonymous": false,
+  "PerIPLogs": false,
+  "Max_PerSecond": 5,
+  "Max_Total": 6,
+  "BanLength": 3600,
+  "MaxErrors": 6,
+  "BufferSize": 8192,
+  "Files": [
+  {
     "Name": "readme.txt",
-    "Content": "Please, dont insert content which is more than 2048 bytes!"
-  }],
-  "Banner": "Welcome to FTP!"
+    "Content": "Hello!"
+  }]
 }
 ```
 | Key | Value |
@@ -61,14 +69,21 @@ The program should exit with an error. Proceed to editing the **config.json**
 | PortDef | Replace with port you want to use for new connections (21 by default) |
 | PortPasv | Replace with port for PASV mode (1222 by default) |
 | Hostname | Replace with an actual public IPv4 of your PC/server. Used to initiate PASV connections. Please use IPv4, we dont support domains |
+| Banner | Banner sent right after TCP handshake. %host% will be replaced with current hostname |
 | Token | AbuseIPDB token to report bad ones |
 | Report | Should we report suspicious actions? |
 | Ban | Should we ban users on suspicious actions? (Ban is 1 hour long to prevent people from being double-reported) |
 | PunishScans | Should we ban/report nmap scanners? |
+| AllowAnonymous | Should we allow users to login with "anonymous" username? |
+| PerIPLogs | Create logs for individual IPs. Requires "iplogs" folder |
+| Max_PerSecond | Max. amount of connections per second from an IP. Only applies to base socket |
+| Max_Total | Max. amount of active connections from an IP. Applies to both base and PASV |
+| BanLength | Length (in seconds) of a ban. 3600 seconds = 1 hour. |
+| MaxErrors | Max.amount of attempts to execute an invalid FTP command. |
+| BufferSize | Buffer size on RETR for files. Somewhere around 2048-8192 is fine. Determines the speed of a download. |
 | Files[] | Array of files. |
 | Files[Name] | Filename |
 | Files[Content] | Contents of files (string). Start with --- to make it load from a file (example: "---file.exe") |
-| Banner | Banner sent right after TCP handshake. %host% will be replaced with current hostname |
 
 To make it work, you should change PortPasv to any other value, so PortPasv is not equal to PortDef. Other options are optional.
 **We highly dont recommend using files with size of more than 4 MB! You should not use honeypot as a real FTP server to share files!**

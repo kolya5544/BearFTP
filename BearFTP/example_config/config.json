@@ -2,10 +2,18 @@
   "PortDef": 21,
   "PortPasv": 1222,
   "Hostname": "145.239.82.241",
+  "Banner": "ProFTPd 1.3.5 Server [%host%]",
   "Token": "",
   "Report": true,
   "Ban": true,
   "PunishScans": true,
+  "AllowAnonymous": false,
+  "PerIPLogs": false,
+  "Max_PerSecond": 4,
+  "Max_Total": 5,
+  "BanLength": 7200,
+  "MaxErrors": 5,
+  "BufferSize": 8192,
   "Files": [
   {
     "Name": "sqlite.db",
@@ -14,6 +22,5 @@
   {
     "Name": "parsed1.db",
 	"Content": "You are not allowed to see the contents of this file!"
-  }],
-  "Banner": "ProFTPd 1.3.5 Server [%host%]"
+  }]
 }
