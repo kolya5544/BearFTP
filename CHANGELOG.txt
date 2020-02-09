@@ -2,7 +2,7 @@
 
 v0.3.0:
 - Toggleable anonymous logins
-- Per-IP logs (create "logs" folder)
+- Per-IP logs (create "iplogs" folder)
 - Max connections per second and max active connections are now changeable
 - Buffer size can now be changed (def.8192) 
 - Fixed lower-case command handling (+)
