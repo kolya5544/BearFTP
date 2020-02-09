@@ -51,6 +51,7 @@ The program should exit with an error. Proceed to editing the **config.json**
   "Ban": true,
   "PunishScans": true,
   "AllowAnonymous": false,
+  "PerIPLogs": false,
   "Max_PerSecond": 5,
   "Max_Total": 6,
   "BanLength": 3600,
@@ -74,6 +75,7 @@ The program should exit with an error. Proceed to editing the **config.json**
 | Ban | Should we ban users on suspicious actions? (Ban is 1 hour long to prevent people from being double-reported) |
 | PunishScans | Should we ban/report nmap scanners? |
 | AllowAnonymous | Should we allow users to login with "anonymous" username? |
+| PerIPLogs | Create logs for individual IPs. Requires "iplogs" folder |
 | Max_PerSecond | Max. amount of connections per second from an IP. Only applies to base socket |
 | Max_Total | Max. amount of active connections from an IP. Applies to both base and PASV |
 | BanLength | Length (in seconds) of a ban. 3600 seconds = 1 hour. |

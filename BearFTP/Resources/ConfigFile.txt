@@ -8,6 +8,7 @@
   "Ban": true,
   "PunishScans": true,
   "AllowAnonymous": false,
+  "PerIPLogs": false,
   "Max_PerSecond": 5,
   "Max_Total": 6,
   "BanLength": 3600,

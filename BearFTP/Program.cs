@@ -257,7 +257,13 @@ namespace BearFTP
 
             if (sw != null && PerIPLogs)
             {
-                sw.WriteLine(Builder);
+                try
+                {
+                    sw.WriteLine(Builder);
+                } catch
+                {
+
+                }
             }
 
             logfile.WriteLine(Builder);
@@ -364,7 +370,7 @@ namespace BearFTP
                     StreamReader sr = new StreamReader(ns);
                     StreamWriter sw = new StreamWriter(ns);
 
-                    StreamWriter perip;
+                    StreamWriter perip = null;
 
                     sw.AutoFlush = true;
                     string hostname = ((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString();
@@ -375,8 +381,18 @@ namespace BearFTP
                             if (!perips.Any(logs => ((FileStream)(logs.BaseStream)).Name.Contains(hostname)))
                             {
                                 perip = new StreamWriter("iplogs/" + hostname + ".txt", true);
-                                perip.AutoFlush = true;
+                            perip.AutoFlush = true;
+                            
                                 perips.Add(perip);
+                            } else
+                            {
+                                foreach (StreamWriter ip in perips)
+                                {
+                                    if (((FileStream)(ip.BaseStream)).Name.Contains(hostname))
+                                    {
+                                        perip = ip; break;
+                                    }
+                                }
                             }
                         }
                         catch
