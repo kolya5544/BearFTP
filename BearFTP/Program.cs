@@ -536,9 +536,13 @@ namespace BearFTP
                                     answ.Replace(answ.Split(' ')[0], upperfix); //Fixing the lowercase commands an easy way
 
                                     //Command processing.
-                                    if (answ.Length >= 3) //We dont want dummies to spam/DDoS.
+                                    if (answ.Length >= 1)
                                     {
                                         Log(answ, "in", true, hostname, perip);
+                                    }
+                                    if (answ.Length > 256)
+                                    {
+                                        client.Close();
                                     }
                                     if (answ.StartsWith("CONNECT") || answ.StartsWith("GET http"))
                                     {
@@ -554,10 +558,6 @@ namespace BearFTP
                                         a.Start();
 
 
-                                    }
-                                    if (answ.Length > 128)
-                                    {
-                                        client.Close();
                                     }
                                     if (answ.StartsWith("OPTS"))
                                     {

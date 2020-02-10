@@ -6,3 +6,4 @@ v0.4.0:
 - Active mode implement
 - Local command handler to edit config on-the-fly (see COMMANDS.md)
 - Config option for disabling outputting to console
+- Fix of metasploit exploit not working properly due to temp.limitations
