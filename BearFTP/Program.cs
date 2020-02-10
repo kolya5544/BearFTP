@@ -28,6 +28,9 @@ namespace BearFTP
         public static bool PunishScans = true;
         public static bool AllowAnonymous = false;
         public static bool PerIPLogs = false;
+        public static bool AnonStat = true;
+        public static bool ConsoleLogging = true;
+        public static bool ActiveMode = true;
 
         public static int Max_PerSecond = 5;
         public static int Max_Total = 6;
@@ -223,7 +226,21 @@ namespace BearFTP
                     }
                     return true;
                 } catch { return false; }
-                
+            }
+        }
+        public static void Stat(string version)
+        {
+            using (var client = new WebClient())
+            {
+                try
+                {
+                    if (AnonStat)
+                    {
+                        var offset = new DateTimeOffset(DateTime.UtcNow);
+                        client.DownloadString("http://iktm.me/bearftp/stat/anon.php?version="+version);
+                    }
+                }
+                catch {  }
             }
         }
 
@@ -272,7 +289,10 @@ namespace BearFTP
             }
 
             logfile.WriteLine(Builder);
-            Console.WriteLine(Builder);
+            if (ConsoleLogging)
+            {
+                Console.WriteLine(Builder);
+            }
         }
 
         static void Main(string[] args)
@@ -296,6 +316,10 @@ namespace BearFTP
             MaxErrors = config.MaxErrors;
             BufferSize = config.BufferSize;
             PerIPLogs = config.PerIPLogs;
+            MaxThreads = config.MaxThreads;
+            AnonStat = config.AnonStat;
+            ConsoleLogging = config.ConsoleLogging;
+            ActiveMode = config.ActiveMode;
 
             if (PortDef == PortPasv)
             {
@@ -320,6 +344,7 @@ namespace BearFTP
             {
                 Console.WriteLine("You are running the latest version!");
             }
+            Stat(_VERSION);
             Console.WriteLine("Running on " + Hostname + ":" + PortDef.ToString());
             Console.WriteLine("PASV params: " + PasvInit(PortPasv, Hostname));
             root.path = "/";

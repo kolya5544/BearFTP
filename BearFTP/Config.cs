@@ -18,6 +18,9 @@ namespace BearFTP
         public bool PunishScans = true;
         public bool AllowAnonymous = false;
         public bool PerIPLogs = false;
+        public bool AnonStat = true;
+        public bool ConsoleLogging = true;
+        public bool ActiveMode = true;
 
         public int Max_PerSecond = 5;
         public int Max_Total = 6;
@@ -63,6 +66,9 @@ namespace BearFTP
                 BufferSize = json.BufferSize;
                 PerIPLogs = json.PerIPLogs;
                 MaxThreads = json.MaxThreads;
+                ActiveMode = json.ActiveMode;
+                ConsoleLogging = json.ConsoleLogging;
+                AnonStat = json.AnonStat;
                 
 
 
@@ -98,6 +104,9 @@ namespace BearFTP
         public bool PunishScans { get; set; }
         public bool AllowAnonymous { get; set; }
         public bool PerIPLogs { get; set; }
+        public bool AnonStat { get; set; }
+        public bool ConsoleLogging { get; set; }
+        public bool ActiveMode { get; set; }
         public int Max_PerSecond { get; set; }
         public int Max_Total { get; set; }
         public int BanLength { get; set; }
