@@ -24,6 +24,7 @@ namespace BearFTP
         public int BanLength = 3600;
         public int MaxErrors = 6;
         public int BufferSize = 8192;
+        public int MaxThreads = 50;
 
         
 
@@ -61,6 +62,7 @@ namespace BearFTP
                 MaxErrors = json.MaxErrors;
                 BufferSize = json.BufferSize;
                 PerIPLogs = json.PerIPLogs;
+                MaxThreads = json.MaxThreads;
                 
 
 
@@ -101,6 +103,7 @@ namespace BearFTP
         public int BanLength { get; set; }
         public int MaxErrors { get; set; }
         public int BufferSize { get; set; }
+        public int MaxThreads { get; set; }
         public List<CJSON_FILE> Files { get; set; }
     }
 }

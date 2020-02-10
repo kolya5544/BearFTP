@@ -14,6 +14,7 @@
   "BanLength": 3600,
   "MaxErrors": 6,
   "BufferSize": 8192,
+  "MaxThreads": 50,
   "Files": [
   {
     "Name": "readme.txt",

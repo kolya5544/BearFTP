@@ -14,6 +14,7 @@
   "BanLength": 7200,
   "MaxErrors": 5,
   "BufferSize": 8192,
+  "MaxThreads": 30,
   "Files": [
   {
     "Name": "sqlite.db",
