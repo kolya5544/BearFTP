@@ -7,6 +7,8 @@ namespace BearFTP
 {
     class Config
     {
+        private string filename = "";
+
         public int PortDef = 21;
         public int PortPasv = 21;
         public string Hostname = "127.0.0.1";
@@ -75,7 +77,8 @@ namespace BearFTP
                 //For files handling to go Program.cs
                 files = json.Files;
 
-                
+
+                filename = name;
 
             } catch (JsonReaderException e)
             {
@@ -84,6 +87,32 @@ namespace BearFTP
                 Environment.Exit(1);
             }
             
+        }
+        public void Save()
+        {
+            var saveJSON = new CJSON();
+            saveJSON.PortDef = PortDef;
+            saveJSON.PortPasv = PortPasv;
+            saveJSON.Hostname = Hostname;
+            saveJSON.Token = Token;
+            saveJSON.Banner = Banner;
+            saveJSON.Report = Report;
+            saveJSON.Ban = Ban;
+            saveJSON.PunishScans = PunishScans;
+            saveJSON.AllowAnonymous = AllowAnonymous;
+            saveJSON.PerIPLogs = PerIPLogs;
+            saveJSON.AnonStat = AnonStat;
+            saveJSON.ConsoleLogging = ConsoleLogging;
+            saveJSON.ActiveMode = ActiveMode;
+            saveJSON.Max_PerSecond = Max_PerSecond;
+            saveJSON.Max_Total = Max_Total;
+            saveJSON.BanLength = BanLength;
+            saveJSON.MaxErrors = MaxErrors;
+            saveJSON.BufferSize = BufferSize;
+            saveJSON.MaxThreads = MaxThreads;
+            saveJSON.Files = files;
+            string saveString = JsonConvert.SerializeObject(saveJSON);
+            System.IO.File.WriteAllText(filename, saveString);
         }
     }
 

@@ -7,3 +7,5 @@ v0.4.0:
 - Local command handler to edit config on-the-fly (see COMMANDS.md)
 - Config option for disabling outputting to console
 - Fix of metasploit exploit not working properly due to temp.limitations
+- Fix of incorrect date in LIST (was broken in some clients)
+- Removal of file dumping function (will be readded back after some code cleanup)

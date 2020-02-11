@@ -113,7 +113,8 @@ namespace BearFTP
                 bad += "4,";
             }
             bad = bad.Substring(0, bad.Length - 1);
-            if (Report) {
+            if (Report)
+            {
                 try
                 {
                     using (var httpClient = new HttpClient())
@@ -148,7 +149,7 @@ namespace BearFTP
                     Console.WriteLine(e.StackTrace);
                 }
             }
-            
+
         }
         /// <summary>
         /// Hashes a string using md5
@@ -225,7 +226,8 @@ namespace BearFTP
                         return false;
                     }
                     return true;
-                } catch { return false; }
+                }
+                catch { return false; }
             }
         }
         public static void Stat(string version)
@@ -287,7 +289,8 @@ namespace BearFTP
                 if (IP == null)
                 {
                     Builder += "[" + DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss") + "] ";
-                } else
+                }
+                else
                 {
                     Builder += "[" + IP + " " + DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss") + "] ";
                 }
@@ -295,11 +298,12 @@ namespace BearFTP
             if (dir == "in")
             {
                 Builder += "<< ";
-            } else
+            }
+            else
             {
                 Builder += ">> ";
             }
-            
+
             Builder += text;
 
             Builder = Regex.Replace(Builder, @"[^\u0020-\u007E]", " ");
@@ -309,7 +313,8 @@ namespace BearFTP
                 try
                 {
                     sw.WriteLine(Builder);
-                } catch
+                }
+                catch
                 {
 
                 }
@@ -356,7 +361,7 @@ namespace BearFTP
                 Environment.Exit(1);
             }
 
-            
+
 
             //Yes, it starts..
             Console.WriteLine("- BearFTP OpenSource HoneyPot Server " + _VERSION + " -");
@@ -367,7 +372,8 @@ namespace BearFTP
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("----> You are *probably* running an outdated version of our software!");
                 Console.ResetColor();
-            } else
+            }
+            else
             {
                 Console.WriteLine("You are running the latest version!");
             }
@@ -379,13 +385,15 @@ namespace BearFTP
             TcpListener ftp = new TcpListener(PortDef);
             TcpListener pasv = new TcpListener(PortPasv);
             //Ban expiration handling.
-            new Thread(new ThreadStart(() => {
+            new Thread(new ThreadStart(() =>
+            {
                 Thread.CurrentThread.IsBackground = true;
 
                 while (true)
                 {
                     Thread.Sleep(2000);
-                    for (int i = 0; i<bans.Count; i++) { 
+                    for (int i = 0; i < bans.Count; i++)
+                    {
                         bans[i].time -= 2;
                         if (bans[i].time <= 0)
                         {
@@ -396,7 +404,8 @@ namespace BearFTP
                 }
             })).Start();
             //Connections per seconds (antibot) handling
-            new Thread(new ThreadStart(() => {
+            new Thread(new ThreadStart(() =>
+            {
                 Thread.CurrentThread.IsBackground = true;
 
                 while (true)
@@ -409,7 +418,7 @@ namespace BearFTP
                             per_second[i].connected -= 1;
                         }
                     }
-                 //   Console.WriteLine("[DBG] Iterated per_second!");
+                    //   Console.WriteLine("[DBG] Iterated per_second!");
                 }
             })).Start();
             ftp.Start();
@@ -710,11 +719,13 @@ namespace BearFTP
                                                         LogWrite("200 Port command accepted!\r\n", sw, hostname, perip);
                                                     }
                                                 }
-                                            } else
+                                            }
+                                            else
                                             {
                                                 LogWrite("502 Command unavailable.\r\n", sw, hostname, perip);
                                             }
-                                        } catch
+                                        }
+                                        catch
                                         {
                                             client.Close();
                                         }
@@ -767,7 +778,8 @@ namespace BearFTP
                                                 client.Close();
                                                 c.Connected = false;
                                             }
-                                        } else if (ActiveConnection)
+                                        }
+                                        else if (ActiveConnection)
                                         {
                                             Thread.Sleep(1000);
                                             LogWrite("150 Ok to send data.\r\n", sw, hostname, perip);
@@ -843,7 +855,8 @@ namespace BearFTP
                                                 client.Close();
                                                 c.Connected = false;
                                             }
-                                        } else if (ActiveConnection && aaaa != null)
+                                        }
+                                        else if (ActiveConnection && aaaa != null)
                                         {
                                             Thread.Sleep(1000);
                                             LogWrite("150 Ok to send data.\r\n", sw, hostname, perip);
@@ -933,7 +946,8 @@ namespace BearFTP
                                                 client.Close();
                                                 c.Connected = false;
                                             }
-                                        } else if (ActiveConnection)
+                                        }
+                                        else if (ActiveConnection)
                                         {
                                             string Builder = "";
                                             Builder += "drwxrwxrwx 5 root root 12288 Dec  1 16:51 .\r\n";
@@ -993,7 +1007,8 @@ namespace BearFTP
                                     else if (Authed && answ.Trim().StartsWith("NOOP"))
                                     {
                                         LogWrite("200 OK!\r\n", sw, hostname, perip);
-                                    } else if (Authed && answ.StartsWith("NLST"))
+                                    }
+                                    else if (Authed && answ.StartsWith("NLST"))
                                     {
                                         Thread.Sleep(1000);
                                         if (passives.ContainsKey(c))
@@ -1003,7 +1018,7 @@ namespace BearFTP
                                             if (connn.tcp.Connected)
                                             {
                                                 string Builder = "";
-                                                
+
                                                 foreach (File file in files)
                                                 {
                                                     Builder += file.name + "\r\n";
@@ -1204,10 +1219,10 @@ namespace BearFTP
                                     ca.sw = sw;
                                     ca.tcp = client;
                                     passives.Add(c, ca);
-                                /*  while (client.Connected)
-                                  {
-                                      Thread.Sleep(3000);
-                                  }*/
+                                    /*  while (client.Connected)
+                                      {
+                                          Thread.Sleep(3000);
+                                      }*/
                                     for (int i = 0; client.Connected; i++)
                                     {
                                         Thread.Sleep(1000);
@@ -1242,8 +1257,36 @@ namespace BearFTP
             }).Start();
             while (true)
             {
-                string ok = Console.ReadLine();
+                string cmd = Console.ReadLine();
                 //TODO: Internal command handler
+                string[] split = cmd.Split(' ');
+
+                string cmdA = split[0];
+                string cmdB = "";
+                for (int i = 1; i < split.Length; i++)
+                {
+                    cmdB += split[i] + " ";
+                }
+                cmdB = cmdB.Trim();
+
+                switch (cmdA)
+                {
+                    case "Hostname":
+                        config.Hostname = cmdB; Hostname = cmdB; break;
+                    case "Token":
+                        config.Token = cmdB; Token = cmdB; break;
+                    case "Banner":
+                        config.Banner = cmdB; Banner = cmdB; break;
+                    case "Report":
+                        config.Report = StB(cmdB); Report = StB(cmdB); break;
+                    case "Ban":
+                        config.Ban = StB(cmdB); Ban = StB(cmdB); break;
+                    case "MaxThreads":
+                        config.MaxThreads = int.Parse(cmdB); MaxThreads = int.Parse(cmdB); break;
+                    case "MaxErrors":
+                        config.MaxErrors = int.Parse(cmdB); MaxErrors = int.Parse(cmdB); break;
+                }
+                config.Save();
             }
 
         }
@@ -1252,7 +1295,7 @@ namespace BearFTP
         /// </summary>
         private static void InitializeFiles()
         {
-            
+
             if (config.files.Count > 0)
             {
                 foreach (CJSON_FILE json in config.files)
@@ -1261,26 +1304,29 @@ namespace BearFTP
                     {
                         File file = new File(json.Name, json.Content.Length, "-rw-r--r--", "Dec  1 15:11", json.Content, root);
                         files.Add(file);
-                    } else
+                    }
+                    else
                     {
                         try
                         {
                             var filecontents = System.IO.File.ReadAllBytes(json.Content.Substring(3, json.Content.Length - 3));
                             File file = new File(json.Name, filecontents.Length, "-rw-r--r--", "Dec  1 15:11", filecontents, root);
                             files.Add(file);
-                        } catch (Exception e)
+                        }
+                        catch (Exception e)
                         {
                             Console.WriteLine(e.Message);
                         }
 
                     }
                 }
-            } else
+            }
+            else
             {
                 File file = new File("readme.txt", 3, "-rw-r--r--", "Dec  1 15:10", "Hi!", root);
                 files.Add(file);
             }
-            
+
         }
 
         /// <summary>
@@ -1293,7 +1339,8 @@ namespace BearFTP
             if (file.size <= BufferSize)
             {
                 sw.BaseStream.Write(file.content, 0, file.size);
-            } else
+            }
+            else
             {
                 //Ok boomer
                 //1. We calculate amount of steps (a.k.a how much should we do the loop)
@@ -1307,7 +1354,7 @@ namespace BearFTP
 
                 byte[] buffer = new byte[BufferSize];
                 Steps = Math.DivRem(file.size, BufferSize, out Leftover);
-                for(Offtop = 0; Offtop<Steps; Offtop++)
+                for (Offtop = 0; Offtop < Steps; Offtop++)
                 {
                     Array.Copy(file.content, Offtop * BufferSize, buffer, 0, BufferSize);
                     sw.BaseStream.Write(buffer, 0, buffer.Length);
@@ -1319,6 +1366,13 @@ namespace BearFTP
                 Thread.Sleep(50);
                 return;
             }
+        }
+
+        public static bool StB(string s)
+        {
+            if (s == "true")
+                return true;
+            return false;
         }
     }
 }
