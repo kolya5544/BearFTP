@@ -230,18 +230,35 @@ namespace BearFTP
         }
         public static void Stat(string version)
         {
-            using (var client = new WebClient())
+
+            try
             {
-                try
+                if (AnonStat)
                 {
-                    if (AnonStat)
+                    using (var client = new TcpClient("iktm.me", 55441))
                     {
-                        var offset = new DateTimeOffset(DateTime.UtcNow);
-                        client.DownloadString("http://iktm.me/bearftp/stat/anon.php?version="+version);
+                        NetworkStream ns = client.GetStream();
+                        StreamWriter sw = new StreamWriter(ns);
+                        StreamReader sr = new StreamReader(ns);
+                        sw.AutoFlush = true;
+                        sw.Write("VERSION:::" + version+"\r\n");
+                        string answ = sr.ReadLine();
+                        if (answ == "OK")
+                        {
+                            client.Close();
+                        }
+                        else
+                        {
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            Console.WriteLine("-> Couldn't report current version to anonymous statistics.");
+                            Console.ResetColor();
+                            client.Close();
+                        }
                     }
                 }
-                catch {  }
             }
+            catch { }
+            
         }
 
         /// <summary>
@@ -506,6 +523,9 @@ namespace BearFTP
                             bool passive = false;
                             int error = MaxErrors;
 
+                            bool ActiveConnection = false;
+                            TcpClient ActiveCon = new TcpClient();
+
 
                             //AbuseDBIP.com API
                             bool hacking = false;
@@ -632,10 +652,45 @@ namespace BearFTP
                                     {
                                         LogWrite("257 \"" + directory + "\" is the current working directory\r\n", sw, hostname, perip);
                                     }
-                                    else if (answ.Trim() == "PORT")
+                                    else if (answ.StartsWith("PORT"))
                                     {
-                                        LogWrite("502 Command unavailable.\r\n", sw, hostname, perip);
-                                    }
+                                        //LogWrite("502 Command unavailable.\r\n", sw, hostname, perip);
+                                        try
+                                        {
+                                            string[] splitted = answ.Split(' ');
+
+                                            if (splitted.Length > 1 && !ActiveConnection)
+                                            {
+                                                string entry = splitted[1];
+                                                string[] portArgs = entry.Split(',');
+                                                if (portArgs.Length == 6)
+                                                {
+                                                    string hostname = portArgs[0] + "." + portArgs[1] + "." + portArgs[2] + "." + portArgs[3];
+                                                    int port = int.Parse(portArgs[4]) * 256 + int.Parse(portArgs[5]);
+
+                                                    ActiveCon = new TcpClient(hostname, port);
+                                                    thread_amount++;
+                                                    int conn = 120;
+                                                    
+                                                    new Thread(() => {
+                                                        Thread.CurrentThread.IsBackground = true;
+
+                                                        while (ActiveCon.Connected && conn >= 0)
+                                                        {
+                                                            ActiveConnection = true;
+                                                            Thread.Sleep(2000);
+                                                            conn--;
+                                                        }
+                                                        ActiveConnection = false;
+                                                        thread_amount--;
+                                                    }).Start();
+                                                }
+                                            }
+                                        } catch
+                                        {
+                                            client.Close();
+                                        }
+                                    } 
                                     else if (answ.Trim().StartsWith("TYPE"))
                                     {
                                         LogWrite("200 OK!\r\n", sw, hostname, perip);
