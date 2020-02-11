@@ -134,12 +134,18 @@ namespace BearFTP
                             var response = await httpClient.SendAsync(request);
                             if (response.StatusCode == HttpStatusCode.OK)
                             {
-                                Console.WriteLine("=== REPORTED IP " + hostname);
+                                if (ConsoleLogging)
+                                {
+                                    Console.WriteLine("=== REPORTED IP " + hostname);
+                                }
                             }
                             else
                             {
-                                Console.WriteLine("=== ERROR WHILE REPORTING: " + response.StatusCode.ToString());
-                                Console.WriteLine("=== " + response.Content.ToString());
+                                if (ConsoleLogging)
+                                {
+                                    Console.WriteLine("=== ERROR WHILE REPORTING: " + response.StatusCode.ToString());
+                                    Console.WriteLine("=== " + response.Content.ToString());
+                                }
                             }
                         }
                     }
@@ -1250,6 +1256,10 @@ namespace BearFTP
 
                         ));
                         user.Start();
+                    } else
+                    {
+                        Console.WriteLine("-> ALL FREE THREADS ARE CURRENTLY BUSY! <-");
+                        client.Close();
                     }
 
 
