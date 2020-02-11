@@ -235,13 +235,14 @@ namespace BearFTP
             {
                 if (AnonStat)
                 {
-                    using (var client = new TcpClient("iktm.me", 55441))
+                    var client = new TcpClient();
+                    if (client.ConnectAsync("iktm.me", 55441).Wait(1000))
                     {
                         NetworkStream ns = client.GetStream();
                         StreamWriter sw = new StreamWriter(ns);
                         StreamReader sr = new StreamReader(ns);
                         sw.AutoFlush = true;
-                        sw.Write("VERSION:::" + version+"\r\n");
+                        sw.Write("VERSION:::" + version + "\r\n");
                         string answ = sr.ReadLine();
                         if (answ == "OK")
                         {
@@ -249,16 +250,25 @@ namespace BearFTP
                         }
                         else
                         {
-                            Console.ForegroundColor = ConsoleColor.Red;
-                            Console.WriteLine("-> Couldn't report current version to anonymous statistics.");
-                            Console.ResetColor();
-                            client.Close();
+
                         }
+                    }
+                    else
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine("-> Couldn't report current version to anonymous statistics.");
+                        Console.ResetColor();
+                        client.Close();
                     }
                 }
             }
-            catch { }
-            
+            catch
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("-> Couldn't report current version to anonymous statistics.");
+                Console.ResetColor();
+            }
+
         }
 
         /// <summary>
@@ -660,46 +670,55 @@ namespace BearFTP
                                         Thread.Sleep(250); //Anti possible race condition? Unconfirmed
                                         try
                                         {
-                                            string[] splitted = answ.Split(' ');
-
-                                            if (splitted.Length > 1 && !ActiveConnection)
+                                            if (ActiveMode)
                                             {
-                                                string entry = splitted[1];
-                                                string[] portArgs = entry.Split(',');
-                                                if (portArgs.Length == 6)
+                                                string[] splitted = answ.Split(' ');
+
+                                                if (splitted.Length > 1 && !ActiveConnection)
                                                 {
-                                                    string hostname = portArgs[0] + "." + portArgs[1] + "." + portArgs[2] + "." + portArgs[3];
-                                                    int port = int.Parse(portArgs[4]) * 256 + int.Parse(portArgs[5]);
+                                                    string entry = splitted[1];
+                                                    string[] portArgs = entry.Split(',');
+                                                    if (portArgs.Length == 6)
+                                                    {
+                                                        string hostname = portArgs[0] + "." + portArgs[1] + "." + portArgs[2] + "." + portArgs[3];
+                                                        int port = int.Parse(portArgs[4]) * 256 + int.Parse(portArgs[5]);
 
-                                                    ActiveCon = new TcpClient(hostname, port);
-                                                    var ns = ActiveCon.GetStream();
-                                                    ns.ReadTimeout = 2000;
-                                                    ns.WriteTimeout = 2000;
-                                                    ActiveConSR = new StreamReader(ns);
-                                                    ActiveConSW = new StreamWriter(ns);
-                                                    thread_amount++;
-                                                    int conn = 120;
-                                                    
-                                                    new Thread(() => {
-                                                        Thread.CurrentThread.IsBackground = true;
+                                                        ActiveCon = new TcpClient(hostname, port);
+                                                        var ns = ActiveCon.GetStream();
+                                                        ns.ReadTimeout = 2000;
+                                                        ns.WriteTimeout = 2000;
+                                                        ActiveConSR = new StreamReader(ns);
+                                                        ActiveConSW = new StreamWriter(ns);
+                                                        ActiveConSW.AutoFlush = true;
+                                                        thread_amount++;
+                                                        int conn = 120;
 
-                                                        while (ActiveCon.Connected && conn >= 0 )
+                                                        new Thread(() =>
                                                         {
-                                                            ActiveConnection = true;
-                                                            Thread.Sleep(1000);
-                                                            conn--;
-                                                        }
-                                                        ActiveCon.Close();
-                                                        ActiveConnection = false;
-                                                        thread_amount--;
-                                                    }).Start();
+                                                            Thread.CurrentThread.IsBackground = true;
+
+                                                            while (ActiveCon.Connected && conn >= 0)
+                                                            {
+                                                                ActiveConnection = true;
+                                                                Thread.Sleep(1000);
+                                                                conn--;
+                                                            }
+                                                            ActiveCon.Close();
+                                                            ActiveConnection = false;
+                                                            thread_amount--;
+                                                        }).Start();
+                                                        LogWrite("200 Port command accepted!\r\n", sw, hostname, perip);
+                                                    }
                                                 }
+                                            } else
+                                            {
+                                                LogWrite("502 Command unavailable.\r\n", sw, hostname, perip);
                                             }
                                         } catch
                                         {
                                             client.Close();
                                         }
-                                    } 
+                                    }
                                     else if (answ.Trim().StartsWith("TYPE"))
                                     {
                                         LogWrite("200 OK!\r\n", sw, hostname, perip);
@@ -726,7 +745,7 @@ namespace BearFTP
                                                         memstream.Write(buffer, 0, bytesRead);
                                                     bytess = memstream.ToArray();
                                                 }
-                                             
+
                                                 Thread.Sleep(200);
                                                 LogWrite("226 Transfer complete!\r\n", sw, hostname, perip);
 
@@ -974,6 +993,51 @@ namespace BearFTP
                                     else if (Authed && answ.Trim().StartsWith("NOOP"))
                                     {
                                         LogWrite("200 OK!\r\n", sw, hostname, perip);
+                                    } else if (Authed && answ.StartsWith("NLST"))
+                                    {
+                                        Thread.Sleep(1000);
+                                        if (passives.ContainsKey(c))
+                                        {
+                                            Connectivity connn;
+                                            passives.TryGetValue(c, out connn);
+                                            if (connn.tcp.Connected)
+                                            {
+                                                string Builder = "";
+                                                
+                                                foreach (File file in files)
+                                                {
+                                                    Builder += file.name + "\r\n";
+                                                }
+                                                LogWrite("150 Here comes the directory listing.\r\n", sw, hostname, perip);
+                                                Thread.Sleep(100);
+                                                connn.sw.Write(Builder);
+                                                connn.tcp.Close();
+                                                Thread.Sleep(100);
+                                                LogWrite("226 Directory send OK\r\n", sw, hostname, perip);
+
+                                            }
+                                            else
+                                            {
+                                                client.Close();
+                                                c.Connected = false;
+                                            }
+                                        }
+                                        else if (ActiveConnection)
+                                        {
+                                            string Builder = "";
+
+                                            foreach (File file in files)
+                                            {
+                                                Builder += file.name + "\r\n";
+                                            }
+                                            LogWrite("150 Here comes the directory listing.\r\n", sw, hostname, perip);
+                                            Thread.Sleep(100);
+                                            ActiveConSW.Write(Builder);
+                                            ActiveCon.Close();
+                                            Thread.Sleep(100);
+                                            LogWrite("226 Directory send OK\r\n", sw, hostname, perip);
+
+                                        }
                                     }
                                     else if (Authed && answ.Trim().StartsWith("REST"))
                                     {
@@ -1195,14 +1259,14 @@ namespace BearFTP
                 {
                     if (!json.Content.StartsWith("---"))
                     {
-                        File file = new File(json.Name, json.Content.Length, "-rw-r--r--", "Dec 1 15:11", json.Content, root);
+                        File file = new File(json.Name, json.Content.Length, "-rw-r--r--", "Dec  1 15:11", json.Content, root);
                         files.Add(file);
                     } else
                     {
                         try
                         {
                             var filecontents = System.IO.File.ReadAllBytes(json.Content.Substring(3, json.Content.Length - 3));
-                            File file = new File(json.Name, filecontents.Length, "-rw-r--r--", "Dec 1 15:11", filecontents, root);
+                            File file = new File(json.Name, filecontents.Length, "-rw-r--r--", "Dec  1 15:11", filecontents, root);
                             files.Add(file);
                         } catch (Exception e)
                         {
@@ -1213,7 +1277,7 @@ namespace BearFTP
                 }
             } else
             {
-                File file = new File("readme.txt", 3, "-rw-r--r--", "Dec 1 15:10", "Hi!", root);
+                File file = new File("readme.txt", 3, "-rw-r--r--", "Dec  1 15:10", "Hi!", root);
                 files.Add(file);
             }
             
