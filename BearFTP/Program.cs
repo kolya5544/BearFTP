@@ -28,15 +28,22 @@ namespace BearFTP
         public static bool PunishScans = true;
         public static bool AllowAnonymous = false;
         public static bool PerIPLogs = false;
+        public static bool AnonStat = true;
+        public static bool ConsoleLogging = true;
+        public static bool ActiveMode = true;
 
         public static int Max_PerSecond = 5;
         public static int Max_Total = 6;
         public static int BanLength = 3600;
         public static int MaxErrors = 6;
         public static int BufferSize = 8192;
+        public static int MaxThreads = 50;
 
         //IP TempBan list (hostname:seconds)
         public static List<Ban> bans = new List<Ban>();
+
+        //Count of dynamic threads currently used by a server
+        public static int thread_amount = 0;
 
         //An instance of config to extract values
         public static Config config;
@@ -51,7 +58,7 @@ namespace BearFTP
         public static Directory root = new Directory();
 
         //Current version
-        public static string _VERSION = "v0.3.1 BETA";
+        public static string _VERSION = "v0.4.0 BETA";
 
         //Default log.
         public static StreamWriter logfile = new StreamWriter("log.txt", true);
@@ -106,7 +113,8 @@ namespace BearFTP
                 bad += "4,";
             }
             bad = bad.Substring(0, bad.Length - 1);
-            if (Report) {
+            if (Report)
+            {
                 try
                 {
                     using (var httpClient = new HttpClient())
@@ -126,12 +134,18 @@ namespace BearFTP
                             var response = await httpClient.SendAsync(request);
                             if (response.StatusCode == HttpStatusCode.OK)
                             {
-                                Console.WriteLine("=== REPORTED IP " + hostname);
+                                if (ConsoleLogging)
+                                {
+                                    Console.WriteLine("=== REPORTED IP " + hostname);
+                                }
                             }
                             else
                             {
-                                Console.WriteLine("=== ERROR WHILE REPORTING: " + response.StatusCode.ToString());
-                                Console.WriteLine("=== " + response.Content.ToString());
+                                if (ConsoleLogging)
+                                {
+                                    Console.WriteLine("=== ERROR WHILE REPORTING: " + response.StatusCode.ToString());
+                                    Console.WriteLine("=== " + response.Content.ToString());
+                                }
                             }
                         }
                     }
@@ -141,7 +155,7 @@ namespace BearFTP
                     Console.WriteLine(e.StackTrace);
                 }
             }
-            
+
         }
         /// <summary>
         /// Hashes a string using md5
@@ -218,9 +232,51 @@ namespace BearFTP
                         return false;
                     }
                     return true;
-                } catch { return false; }
-                
+                }
+                catch { return false; }
             }
+        }
+        public static void Stat(string version)
+        {
+
+            try
+            {
+                if (AnonStat)
+                {
+                    var client = new TcpClient();
+                    if (client.ConnectAsync("iktm.me", 55441).Wait(1000))
+                    {
+                        NetworkStream ns = client.GetStream();
+                        StreamWriter sw = new StreamWriter(ns);
+                        StreamReader sr = new StreamReader(ns);
+                        sw.AutoFlush = true;
+                        sw.Write("VERSION:::" + version + "\r\n");
+                        string answ = sr.ReadLine();
+                        if (answ == "OK")
+                        {
+                            client.Close();
+                        }
+                        else
+                        {
+
+                        }
+                    }
+                    else
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine("-> Couldn't report current version to anonymous statistics.");
+                        Console.ResetColor();
+                        client.Close();
+                    }
+                }
+            }
+            catch
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("-> Couldn't report current version to anonymous statistics.");
+                Console.ResetColor();
+            }
+
         }
 
         /// <summary>
@@ -239,7 +295,8 @@ namespace BearFTP
                 if (IP == null)
                 {
                     Builder += "[" + DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss") + "] ";
-                } else
+                }
+                else
                 {
                     Builder += "[" + IP + " " + DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss") + "] ";
                 }
@@ -247,11 +304,12 @@ namespace BearFTP
             if (dir == "in")
             {
                 Builder += "<< ";
-            } else
+            }
+            else
             {
                 Builder += ">> ";
             }
-            
+
             Builder += text;
 
             Builder = Regex.Replace(Builder, @"[^\u0020-\u007E]", " ");
@@ -261,14 +319,18 @@ namespace BearFTP
                 try
                 {
                     sw.WriteLine(Builder);
-                } catch
+                }
+                catch
                 {
 
                 }
             }
 
             logfile.WriteLine(Builder);
-            Console.WriteLine(Builder);
+            if (ConsoleLogging)
+            {
+                Console.WriteLine(Builder);
+            }
         }
 
         static void Main(string[] args)
@@ -292,6 +354,10 @@ namespace BearFTP
             MaxErrors = config.MaxErrors;
             BufferSize = config.BufferSize;
             PerIPLogs = config.PerIPLogs;
+            MaxThreads = config.MaxThreads;
+            AnonStat = config.AnonStat;
+            ConsoleLogging = config.ConsoleLogging;
+            ActiveMode = config.ActiveMode;
 
             if (PortDef == PortPasv)
             {
@@ -301,7 +367,7 @@ namespace BearFTP
                 Environment.Exit(1);
             }
 
-            
+
 
             //Yes, it starts..
             Console.WriteLine("- BearFTP OpenSource HoneyPot Server " + _VERSION + " -");
@@ -312,10 +378,12 @@ namespace BearFTP
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("----> You are *probably* running an outdated version of our software!");
                 Console.ResetColor();
-            } else
+            }
+            else
             {
                 Console.WriteLine("You are running the latest version!");
             }
+            Stat(_VERSION);
             Console.WriteLine("Running on " + Hostname + ":" + PortDef.ToString());
             Console.WriteLine("PASV params: " + PasvInit(PortPasv, Hostname));
             root.path = "/";
@@ -323,13 +391,15 @@ namespace BearFTP
             TcpListener ftp = new TcpListener(PortDef);
             TcpListener pasv = new TcpListener(PortPasv);
             //Ban expiration handling.
-            new Thread(new ThreadStart(() => {
+            new Thread(new ThreadStart(() =>
+            {
                 Thread.CurrentThread.IsBackground = true;
 
                 while (true)
                 {
                     Thread.Sleep(2000);
-                    for (int i = 0; i<bans.Count; i++) { 
+                    for (int i = 0; i < bans.Count; i++)
+                    {
                         bans[i].time -= 2;
                         if (bans[i].time <= 0)
                         {
@@ -340,7 +410,8 @@ namespace BearFTP
                 }
             })).Start();
             //Connections per seconds (antibot) handling
-            new Thread(new ThreadStart(() => {
+            new Thread(new ThreadStart(() =>
+            {
                 Thread.CurrentThread.IsBackground = true;
 
                 while (true)
@@ -353,7 +424,7 @@ namespace BearFTP
                             per_second[i].connected -= 1;
                         }
                     }
-                 //   Console.WriteLine("[DBG] Iterated per_second!");
+                    //   Console.WriteLine("[DBG] Iterated per_second!");
                 }
             })).Start();
             ftp.Start();
@@ -382,10 +453,11 @@ namespace BearFTP
                             if (!perips.Any(logs => ((FileStream)(logs.BaseStream)).Name.Contains(hostname)))
                             {
                                 perip = new StreamWriter("iplogs/" + hostname + ".txt", true);
-                            perip.AutoFlush = true;
-                            
+                                perip.AutoFlush = true;
+
                                 perips.Add(perip);
-                            } else
+                            }
+                            else
                             {
                                 foreach (StreamWriter ip in perips)
                                 {
@@ -445,7 +517,7 @@ namespace BearFTP
                     else
                     {
                         per_second.Add(new Active(hostname, 1));
-                       
+
                     }
                     try
                     {
@@ -459,162 +531,261 @@ namespace BearFTP
 
                     }
 
-                    new Thread(new ThreadStart(() =>
+                    if (thread_amount <= MaxThreads)
                     {
-                        Thread.CurrentThread.IsBackground = true;
-
-                        bool triggered = false;
-                        bool trigger2 = false;
-                        Client c = new Client("null", "null", "null");
-                        string username = "";
-                        string password = "";
-                        string directory = "/";
-                        bool Authed = false;
-                        bool passive = false;
-                        int error = MaxErrors;
-                        
-
-                        //AbuseDBIP.com API
-                        bool hacking = false;
-                        bool bruteforce = false;
-                        bool webapp = false;
-                        string comment = "";
-
-
-                        bool banned = false;
-                        
-
-                        
-
-                        try
+                        thread_amount++;
+                        new Thread(new ThreadStart(() =>
                         {
-                            Thread.Sleep(100);
-                            Log("Connected - " + hostname, "in", true, hostname, perip);
-                            LogWrite("220 " + Banner.Replace("%host%", Hostname) + "\r\n", sw, hostname, perip);
+                            Thread.CurrentThread.IsBackground = true;
 
-                            while (client.Connected)
+                            bool triggered = false;
+                            bool trigger2 = false;
+                            Client c = new Client("null", "null", "null");
+                            string username = "";
+                            string password = "";
+                            string directory = "/";
+                            bool Authed = false;
+                            bool passive = false;
+                            int error = MaxErrors;
+
+                            bool ActiveConnection = false;
+                            TcpClient ActiveCon = new TcpClient();
+                            StreamReader ActiveConSR = null;
+                            StreamWriter ActiveConSW = null;
+
+
+                            //AbuseDBIP.com API
+                            bool hacking = false;
+                            bool bruteforce = false;
+                            bool webapp = false;
+                            string comment = "";
+
+
+                            bool banned = false;
+
+
+
+
+                            try
                             {
                                 Thread.Sleep(100);
-                                
-                                string answ = sr.ReadLine(); //Who'd think this ACTUALLY works. BUT: It's doesnt work on Linux? (Needs testing)
-                                //Tested on Ubuntu 16.04 client and 18.04 server. Seems to work!
-                         
-                                string upperfix = answ.Split(' ')[0].ToUpper();
-                                answ.Replace(answ.Split(' ')[0], upperfix); //Fixing the lowercase commands an easy way
+                                Log("Connected - " + hostname, "in", true, hostname, perip);
+                                LogWrite("220 " + Banner.Replace("%host%", Hostname) + "\r\n", sw, hostname, perip);
 
-                                //Command processing.
-                                if (answ.Length >= 3) //We dont want dummies to spam/DDoS.
+                                while (client.Connected)
                                 {
-                                    Log(answ, "in", true, hostname, perip);
-                                }
-                                if (answ.StartsWith("CONNECT") || answ.StartsWith("GET http"))
-                                {
-                                    if (Ban)
+                                    Thread.Sleep(100);
+
+                                    string answ = sr.ReadLine(); //Who'd think this ACTUALLY works. BUT: It's doesnt work on Linux? (Needs testing)
+                                                                 //Tested on Ubuntu 16.04 client and 18.04 server. Seems to work!
+
+                                    string upperfix = answ.Split(' ')[0].ToUpper();
+                                    answ.Replace(answ.Split(' ')[0], upperfix); //Fixing the lowercase commands an easy way
+
+                                    //Command processing.
+                                    if (answ.Length >= 1)
                                     {
-                                        var aaa = new Ban();
-                                        aaa.hostname = hostname;
-                                        aaa.time = BanLength;
-                                        bans.Add(aaa);
+                                        Log(answ, "in", true, hostname, perip);
+                                    }
+                                    if (answ.Length > 256)
+                                    {
                                         client.Close();
                                     }
-                                    var a = ReportAsync(hostname, "[" + DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss") + "] " + "System scanning (Proxy judging) using CONNECT or GET requests", false, false, true, true, false);
-                                    a.Start();
-
-
-                                }
-                                if (answ.Length > 128)
-                                {
-                                    client.Close();
-                                }
-                                if (answ.StartsWith("OPTS"))
-                                {
-                                    LogWrite("200 Encoding successfully changed!\r\n", sw, hostname, perip);
-                                }
-                                else if (answ.StartsWith("USER") && username.Length < 3 && !Authed)
-                                {
-                                    string temp = answ.Substring(5).Trim();
-                                    Regex r = new Regex("^[a-zA-Z0-9]*$");
-                                    if (r.IsMatch(temp) && temp.Length < 32 && temp.Length > 1 && (temp != "anonymous" || AllowAnonymous))
+                                    if (answ.StartsWith("CONNECT") || answ.StartsWith("GET http"))
                                     {
-                                        username = temp;
-                                        LogWrite("331 This user is protected with password\r\n", sw, hostname, perip);
-
-                                    }
-                                    else
-                                    {
-                                        LogWrite("530 Wrong username or/and password.\r\n", sw, hostname, perip);
-                                        if (temp.Length > 128)
+                                        if (Ban)
                                         {
+                                            var aaa = new Ban();
+                                            aaa.hostname = hostname;
+                                            aaa.time = BanLength;
+                                            bans.Add(aaa);
                                             client.Close();
                                         }
+                                        var a = ReportAsync(hostname, "[" + DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss") + "] " + "System scanning (Proxy judging) using CONNECT or GET requests", false, false, true, true, false);
+                                        a.Start();
+
+
                                     }
-                                }
-                                else if (answ.StartsWith("PASS") && password.Length < 3 && !Authed)
-                                {
-                                    string temp = answ.Substring(5).Trim();
-                                    if (temp.Length < 32 && temp.Length > 1)
+                                    if (answ.StartsWith("OPTS"))
                                     {
-                                        password = temp;
-                                        if (password == "IEUser@" && PunishScans)
+                                        LogWrite("200 Encoding successfully changed!\r\n", sw, hostname, perip);
+                                    }
+                                    else if (answ.StartsWith("USER") && username.Length < 3 && !Authed)
+                                    {
+                                        string temp = answ.Substring(5).Trim();
+                                        Regex r = new Regex("^[a-zA-Z0-9]*$");
+                                        if (r.IsMatch(temp) && temp.Length < 32 && temp.Length > 1 && (temp != "anonymous" || AllowAnonymous))
                                         {
-                                            if (Ban)
+                                            username = temp;
+                                            LogWrite("331 This user is protected with password\r\n", sw, hostname, perip);
+
+                                        }
+                                        else
+                                        {
+                                            LogWrite("530 Wrong username or/and password.\r\n", sw, hostname, perip);
+                                            if (temp.Length > 128)
                                             {
-                                                var aaa = new Ban();
-                                                aaa.hostname = hostname;
-                                                aaa.time = BanLength;
-                                                bans.Add(aaa);
                                                 client.Close();
                                             }
-                                            var a = ReportAsync(hostname, "[" + DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss") + "] " + "System scanning (port scanning) using NMAP", false, false, false, true, false);
-                                            a.Start();
-
-
-
                                         }
-                                        LogWrite("230 Successful login.\r\n", sw, hostname, perip);
-                                        ns.ReadTimeout = 60000;
-                                        Authed = true;
-                                        c = new Client(username, password, hostname);
-
-                                        connected.Add(c);
                                     }
-                                    else
+                                    else if (answ.StartsWith("PASS") && password.Length < 3 && !Authed)
                                     {
-                                        LogWrite("530 Wrong username or/and password.\r\n", sw, hostname, perip);
-                                        if (temp.Length > 128)
+                                        string temp = answ.Substring(5).Trim();
+                                        if (temp.Length < 32 && temp.Length > 1)
+                                        {
+                                            password = temp;
+                                            if (password == "IEUser@" && PunishScans)
+                                            {
+                                                if (Ban)
+                                                {
+                                                    var aaa = new Ban();
+                                                    aaa.hostname = hostname;
+                                                    aaa.time = BanLength;
+                                                    bans.Add(aaa);
+                                                    client.Close();
+                                                }
+                                                var a = ReportAsync(hostname, "[" + DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss") + "] " + "System scanning (port scanning) using NMAP", false, false, false, true, false);
+                                                a.Start();
+
+
+
+                                            }
+                                            LogWrite("230 Successful login.\r\n", sw, hostname, perip);
+                                            ns.ReadTimeout = 60000;
+                                            Authed = true;
+                                            c = new Client(username, password, hostname);
+
+                                            connected.Add(c);
+                                        }
+                                        else
+                                        {
+                                            LogWrite("530 Wrong username or/and password.\r\n", sw, hostname, perip);
+                                            if (temp.Length > 128)
+                                            {
+                                                client.Close();
+                                            }
+                                        }
+                                    }
+                                    else if (answ.Trim() == "SYST")
+                                    {
+                                        LogWrite("215 UNIX Type: L8\r\n", sw, hostname, perip);
+                                    }
+                                    else if (answ.Trim() == "FEAT")
+                                    {
+                                        LogWrite("502 Command unavailable.\r\n", sw, hostname, perip);
+                                    }
+                                    else if (answ.Trim() == "PWD")
+                                    {
+                                        LogWrite("257 \"" + directory + "\" is the current working directory\r\n", sw, hostname, perip);
+                                    }
+                                    else if (answ.StartsWith("PORT"))
+                                    {
+                                        //LogWrite("502 Command unavailable.\r\n", sw, hostname, perip);
+                                        Thread.Sleep(250); //Anti possible race condition? Unconfirmed
+                                        try
+                                        {
+                                            if (ActiveMode)
+                                            {
+                                                string[] splitted = answ.Split(' ');
+
+                                                if (splitted.Length > 1 && !ActiveConnection)
+                                                {
+                                                    string entry = splitted[1];
+                                                    string[] portArgs = entry.Split(',');
+                                                    if (portArgs.Length == 6)
+                                                    {
+                                                        string hostname = portArgs[0] + "." + portArgs[1] + "." + portArgs[2] + "." + portArgs[3];
+                                                        int port = int.Parse(portArgs[4]) * 256 + int.Parse(portArgs[5]);
+
+                                                        ActiveCon = new TcpClient(hostname, port);
+                                                        var ns = ActiveCon.GetStream();
+                                                        ns.ReadTimeout = 2000;
+                                                        ns.WriteTimeout = 2000;
+                                                        ActiveConSR = new StreamReader(ns);
+                                                        ActiveConSW = new StreamWriter(ns);
+                                                        ActiveConSW.AutoFlush = true;
+                                                        thread_amount++;
+                                                        int conn = 120;
+
+                                                        new Thread(() =>
+                                                        {
+                                                            Thread.CurrentThread.IsBackground = true;
+
+                                                            while (ActiveCon.Connected && conn >= 0)
+                                                            {
+                                                                ActiveConnection = true;
+                                                                Thread.Sleep(1000);
+                                                                conn--;
+                                                            }
+                                                            ActiveCon.Close();
+                                                            ActiveConnection = false;
+                                                            thread_amount--;
+                                                        }).Start();
+                                                        LogWrite("200 Port command accepted!\r\n", sw, hostname, perip);
+                                                    }
+                                                }
+                                            }
+                                            else
+                                            {
+                                                LogWrite("502 Command unavailable.\r\n", sw, hostname, perip);
+                                            }
+                                        }
+                                        catch
                                         {
                                             client.Close();
                                         }
                                     }
-                                }
-                                else if (answ.Trim() == "SYST")
-                                {
-                                    LogWrite("215 UNIX Type: L8\r\n", sw, hostname, perip);
-                                }
-                                else if (answ.Trim() == "FEAT")
-                                {
-                                    LogWrite("502 Command unavailable.\r\n", sw, hostname, perip);
-                                }
-                                else if (answ.Trim() == "PWD")
-                                {
-                                    LogWrite("257 \"" + directory + "\" is the current working directory\r\n", sw, hostname, perip);
-                                }
-                                else if (answ.Trim() == "PORT")
-                                {
-                                    LogWrite("502 Command unavailable.\r\n", sw, hostname, perip);
-                                }
-                                else if (answ.Trim().StartsWith("TYPE"))
-                                {
-                                    LogWrite("200 OK!\r\n", sw, hostname, perip);
-                                }
-                                else if (answ.Trim().StartsWith("STOR") && Authed)
-                                {
-                                    Thread.Sleep(2000);
-                                    if (passives.ContainsKey(c))
+                                    else if (answ.Trim().StartsWith("TYPE"))
                                     {
-                                        Connectivity connn;
-                                        passives.TryGetValue(c, out connn);
-                                        if (connn.tcp.Connected)
+                                        LogWrite("200 OK!\r\n", sw, hostname, perip);
+                                    }
+                                    else if (answ.Trim().StartsWith("STOR") && Authed)
+                                    {
+                                        Thread.Sleep(2000);
+                                        if (passives.ContainsKey(c))
+                                        {
+                                            Connectivity connn;
+                                            passives.TryGetValue(c, out connn);
+                                            if (connn.tcp.Connected)
+                                            {
+                                                Thread.Sleep(1000);
+                                                LogWrite("150 Ok to send data.\r\n", sw, hostname, perip);
+                                                Thread.Sleep(100);
+                                                List<byte> filess = new List<byte>();
+                                                var bytess = default(byte[]);
+                                                using (var memstream = new MemoryStream())
+                                                {
+                                                    var buffer = new byte[512];
+                                                    var bytesRead = default(int);
+                                                    while ((bytesRead = connn.sr.BaseStream.Read(buffer, 0, buffer.Length)) > 0)
+                                                        memstream.Write(buffer, 0, bytesRead);
+                                                    bytess = memstream.ToArray();
+                                                }
+
+                                                Thread.Sleep(200);
+                                                LogWrite("226 Transfer complete!\r\n", sw, hostname, perip);
+
+                                                if (Ban)
+                                                {
+                                                    var aaa = new Ban();
+                                                    aaa.hostname = hostname;
+                                                    aaa.time = BanLength;
+                                                    bans.Add(aaa);
+                                                    client.Close();
+                                                }
+                                                var a = ReportAsync(hostname, "[" + DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss") + "] " + "Unauthorized system access using FTP", true, false, false, false, false);
+                                                a.Start();
+
+
+                                            }
+                                            else
+                                            {
+                                                client.Close();
+                                                c.Connected = false;
+                                            }
+                                        }
+                                        else if (ActiveConnection)
                                         {
                                             Thread.Sleep(1000);
                                             LogWrite("150 Ok to send data.\r\n", sw, hostname, perip);
@@ -625,11 +796,10 @@ namespace BearFTP
                                             {
                                                 var buffer = new byte[512];
                                                 var bytesRead = default(int);
-                                                while ((bytesRead = connn.sr.BaseStream.Read(buffer, 0, buffer.Length)) > 0)
+                                                while ((bytesRead = ActiveConSR.BaseStream.Read(buffer, 0, buffer.Length)) > 0)
                                                     memstream.Write(buffer, 0, bytesRead);
                                                 bytess = memstream.ToArray();
                                             }
-                                            System.IO.File.WriteAllBytes("dumps/dump_i" + rnd.Next(1, 2000000000).ToString() + ".txt", bytess);
                                             Thread.Sleep(200);
                                             LogWrite("226 Transfer complete!\r\n", sw, hostname, perip);
 
@@ -643,43 +813,62 @@ namespace BearFTP
                                             }
                                             var a = ReportAsync(hostname, "[" + DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss") + "] " + "Unauthorized system access using FTP", true, false, false, false, false);
                                             a.Start();
-
-
-                                        }
-                                        else
-                                        {
-                                            client.Close();
-                                            c.Connected = false;
                                         }
                                     }
-                                }
-                                else if (answ.StartsWith("RETR") && Authed)
-                                {
-                                    Thread.Sleep(2000);
-                                    string filename = answ.Substring(5).Trim().Replace("/", "");
-                                    File aaaa = null;
-                                    foreach (File aa in files)
+                                    else if (answ.StartsWith("RETR") && Authed)
                                     {
-                                        if (aa.name == filename)
+                                        Thread.Sleep(2000);
+                                        string filename = answ.Substring(5).Trim().Replace("/", "");
+                                        File aaaa = null;
+                                        foreach (File aa in files)
                                         {
-                                            aaaa = aa;
+                                            if (aa.name == filename)
+                                            {
+                                                aaaa = aa;
+                                            }
                                         }
-                                    }
-                                    if (passives.ContainsKey(c) && aaaa != null)
-                                    {
-                                        Connectivity connn;
-                                        passives.TryGetValue(c, out connn);
-                                        if (connn.tcp.Connected)
+                                        if (passives.ContainsKey(c) && aaaa != null)
+                                        {
+                                            Connectivity connn;
+                                            passives.TryGetValue(c, out connn);
+                                            if (connn.tcp.Connected)
+                                            {
+                                                Thread.Sleep(1000);
+                                                LogWrite("150 Ok to send data.\r\n", sw, hostname, perip);
+                                                Thread.Sleep(100);
+                                                //       byte[] file = aaaa.content;
+                                                //Encoding.ASCII.GetChars(file);
+                                                //      connn.sw.Write(chars, 0, file.Length);
+                                                //      connn.tcp.Close();
+                                                SendFile(aaaa, connn.sw);
+                                                connn.tcp.Close();
+                                                Thread.Sleep(200);
+                                                LogWrite("226 Transfer complete!\r\n", sw, hostname, perip);
+
+                                                if (Ban)
+                                                {
+                                                    var aaa = new Ban();
+                                                    aaa.hostname = hostname;
+                                                    aaa.time = BanLength;
+                                                    bans.Add(aaa);
+                                                    client.Close();
+                                                }
+                                                var a = ReportAsync(hostname, "[" + DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss") + "] " + "Unauthorized system access using FTP", true, false, false, false, false);
+                                                a.Start();
+                                            }
+                                            else
+                                            {
+                                                client.Close();
+                                                c.Connected = false;
+                                            }
+                                        }
+                                        else if (ActiveConnection && aaaa != null)
                                         {
                                             Thread.Sleep(1000);
                                             LogWrite("150 Ok to send data.\r\n", sw, hostname, perip);
                                             Thread.Sleep(100);
-                                            //       byte[] file = aaaa.content;
-                                            //Encoding.ASCII.GetChars(file);
-                                            //      connn.sw.Write(chars, 0, file.Length);
-                                            //      connn.tcp.Close();
-                                            SendFile(aaaa, connn.sw);
-                                            connn.tcp.Close();
+                                            SendFile(aaaa, ActiveConSW);
+                                            ActiveCon.Close();
                                             Thread.Sleep(200);
                                             LogWrite("226 Transfer complete!\r\n", sw, hostname, perip);
 
@@ -694,47 +883,77 @@ namespace BearFTP
                                             var a = ReportAsync(hostname, "[" + DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss") + "] " + "Unauthorized system access using FTP", true, false, false, false, false);
                                             a.Start();
                                         }
-                                        else
+
+                                    }
+                                    else if (answ.Trim() == "PASV" && Authed)
+                                    {
+                                        if (Authed && !passive)
                                         {
-                                            client.Close();
-                                            c.Connected = false;
+                                            LogWrite("227 Entering Passive Mode " + PasvInit(PortPasv, Hostname) + "\r\n", sw, hostname, perip);
+                                            c.passive = true;
+                                        }
+                                    }
+                                    else if (answ.Trim().StartsWith("SIZE") && Authed)
+                                    {
+                                        string filename = answ.Substring(5).Trim().Replace("/", "");
+                                        File aaaa = null;
+                                        foreach (File aa in files)
+                                        {
+                                            if (aa.name == filename)
+                                            {
+                                                aaaa = aa;
+                                            }
+                                        }
+                                        if (aaaa != null)
+                                        {
+                                            LogWrite("213 " + aaaa.size.ToString(), sw, hostname, perip);
                                         }
                                     }
 
-                                }
-                                else if (answ.Trim() == "PASV" && Authed)
-                                {
-                                    if (Authed && !passive)
+                                    else if (answ.Trim().StartsWith("LIST") && Authed)
                                     {
-                                        LogWrite("227 Entering Passive Mode " + PasvInit(PortPasv, Hostname) + "\r\n", sw, hostname, perip);
-                                        c.passive = true;
-                                    }
-                                }
-                                else if (answ.Trim().StartsWith("SIZE") && Authed)
-                                {
-                                    string filename = answ.Substring(5).Trim().Replace("/", "");
-                                    File aaaa = null;
-                                    foreach (File aa in files)
-                                    {
-                                        if (aa.name == filename)
+                                        Thread.Sleep(1500);
+                                        if (passives.ContainsKey(c))
                                         {
-                                            aaaa = aa;
-                                        }
-                                    }
-                                    if (aaaa != null)
-                                    {
-                                        LogWrite("213 " + aaaa.size.ToString(), sw, hostname, perip);
-                                    }
-                                }
+                                            Connectivity connn;
+                                            passives.TryGetValue(c, out connn);
+                                            if (connn.tcp.Connected)
+                                            {
+                                                string Builder = "";
+                                                Builder += "drwxrwxrwx 5 root root 12288 Dec  1 16:51 .\r\n";
+                                                Builder += "drwxrwxrwx 5 root root 12288 Dec  1 16:51 ..\r\n";
+                                                int length = 5;
+                                                foreach (File file in files)
+                                                {
+                                                    if (file.size.ToString().Length > length)
+                                                    {
+                                                        length = file.size.ToString().Length;
+                                                    }
+                                                }
+                                                foreach (File file in files)
+                                                {
+                                                    Builder += file.chmod;
+                                                    Builder += " " + rnd.Next(1, 9) + " ";
+                                                    Builder += "root root ";
+                                                    Builder += new string(' ', length - file.size.ToString().Length) + file.size.ToString();
+                                                    Builder += " " + file.creation;
+                                                    Builder += " " + file.name + "\r\n";
+                                                }
+                                                LogWrite("150 Here comes the directory listing.\r\n", sw, hostname, perip);
+                                                Thread.Sleep(100);
+                                                connn.sw.Write(Builder);
+                                                connn.tcp.Close();
+                                                Thread.Sleep(100);
+                                                LogWrite("226 Directory send OK\r\n", sw, hostname, perip);
 
-                                else if (answ.Trim().StartsWith("LIST") && Authed)
-                                {
-                                    Thread.Sleep(1500);
-                                    if (passives.ContainsKey(c))
-                                    {
-                                        Connectivity connn;
-                                        passives.TryGetValue(c, out connn);
-                                        if (connn.tcp.Connected)
+                                            }
+                                            else
+                                            {
+                                                client.Close();
+                                                c.Connected = false;
+                                            }
+                                        }
+                                        else if (ActiveConnection)
                                         {
                                             string Builder = "";
                                             Builder += "drwxrwxrwx 5 root root 12288 Dec  1 16:51 .\r\n";
@@ -758,110 +977,158 @@ namespace BearFTP
                                             }
                                             LogWrite("150 Here comes the directory listing.\r\n", sw, hostname, perip);
                                             Thread.Sleep(100);
-                                            connn.sw.Write(Builder);
-                                            connn.tcp.Close();
+                                            ActiveConSW.Write(Builder);
+                                            ActiveCon.Close();
+                                            Thread.Sleep(100);
+                                            LogWrite("226 Directory send OK\r\n", sw, hostname, perip);
+                                        }
+                                    }
+                                    else if (answ.StartsWith("CWD"))
+                                    {
+                                        LogWrite("200 OK!\r\n", sw, hostname, perip);
+                                    }
+                                    else if (answ.StartsWith("CPFR"))
+                                    {
+                                        //Fun part: tricking random exploiters. Very "hackers"
+                                        triggered = true; //First level trigger
+                                        LogWrite("350 Need more information.\r\n", sw, hostname, perip);
+                                    }
+                                    else if (answ.Trim().StartsWith("CPTO") && triggered)
+                                    {
+                                        LogWrite("250 Need more information.\r\n", sw, hostname, perip);
+
+                                    }
+                                    else if (answ.Trim().StartsWith("AUTH"))
+                                    {
+                                        LogWrite("502 Please use plain FTP.\r\n", sw, hostname, perip); // We dont want them to use security.
+                                    }
+                                    else if (Authed && username == "admin" && md5(password) == "")
+                                    {
+                                        //Todo: admin cmds
+                                    }
+                                    else if (answ.Trim().StartsWith("CLNT"))
+                                    {
+                                        LogWrite("200 OK!\r\n", sw, hostname, perip);
+                                    }
+                                    else if (Authed && answ.Trim().StartsWith("NOOP"))
+                                    {
+                                        LogWrite("200 OK!\r\n", sw, hostname, perip);
+                                    }
+                                    else if (Authed && answ.StartsWith("NLST"))
+                                    {
+                                        Thread.Sleep(1000);
+                                        if (passives.ContainsKey(c))
+                                        {
+                                            Connectivity connn;
+                                            passives.TryGetValue(c, out connn);
+                                            if (connn.tcp.Connected)
+                                            {
+                                                string Builder = "";
+
+                                                foreach (File file in files)
+                                                {
+                                                    Builder += file.name + "\r\n";
+                                                }
+                                                LogWrite("150 Here comes the directory listing.\r\n", sw, hostname, perip);
+                                                Thread.Sleep(100);
+                                                connn.sw.Write(Builder);
+                                                connn.tcp.Close();
+                                                Thread.Sleep(100);
+                                                LogWrite("226 Directory send OK\r\n", sw, hostname, perip);
+
+                                            }
+                                            else
+                                            {
+                                                client.Close();
+                                                c.Connected = false;
+                                            }
+                                        }
+                                        else if (ActiveConnection)
+                                        {
+                                            string Builder = "";
+
+                                            foreach (File file in files)
+                                            {
+                                                Builder += file.name + "\r\n";
+                                            }
+                                            LogWrite("150 Here comes the directory listing.\r\n", sw, hostname, perip);
+                                            Thread.Sleep(100);
+                                            ActiveConSW.Write(Builder);
+                                            ActiveCon.Close();
                                             Thread.Sleep(100);
                                             LogWrite("226 Directory send OK\r\n", sw, hostname, perip);
 
                                         }
-                                        else
+                                    }
+                                    else if (Authed && answ.Trim().StartsWith("REST"))
+                                    {
+                                        LogWrite("502 There is no such command.\r\n", sw, hostname, perip);
+                                    }
+                                    else
+                                    {
+                                        if (answ.Length >= 3)
                                         {
-                                            client.Close();
-                                            c.Connected = false;
+                                            error--;
+                                            if (error <= 0)
+                                            {
+                                                client.Close();
+                                            }
+
                                         }
                                     }
-                                }
-                                else if (answ.StartsWith("CWD"))
-                                {
-                                    LogWrite("200 OK!\r\n", sw, hostname, perip);
-                                }
-                                else if (answ.StartsWith("CPFR"))
-                                {
-                                    //Fun part: tricking random exploiters. Very "hackers"
-                                    triggered = true; //First level trigger
-                                    LogWrite("350 Need more information.\r\n", sw, hostname, perip);
-                                }
-                                else if (answ.Trim().StartsWith("CPTO") && triggered)
-                                {
-                                    LogWrite("250 Need more information.\r\n", sw, hostname, perip);
-
-                                }
-                                else if (answ.Trim().StartsWith("AUTH"))
-                                {
-                                    LogWrite("502 Please use plain FTP.\r\n", sw, hostname, perip); // We dont want them to use security.
-                                }
-                                else if (Authed && username == "admin" && md5(password) == "")
-                                {
-                                    //Todo: admin cmds
-                                }
-                                else if (answ.Trim().StartsWith("CLNT"))
-                                {
-                                    LogWrite("200 OK!\r\n", sw, hostname, perip);
-                                }
-                                else if (Authed && answ.Trim().StartsWith("NOOP"))
-                                {
-                                    LogWrite("200 OK!\r\n", sw, hostname, perip);
-                                } else if (Authed && answ.Trim().StartsWith("REST"))
-                                {
-                                    LogWrite("502 There is no such command.\r\n", sw, hostname, perip);
-                                }
-                                else
-                                {
-                                    if (answ.Length >= 3)
+                                    if (answ.Contains("php") && triggered)
                                     {
-                                        error--;
-                                        if (error <= 0)
+                                        trigger2 = true; //Second level trigger
+                                    }
+                                    if (trigger2)
+                                    {
+                                        LogWrite("110 Illegal activity was detected.\r\n", sw, hostname, perip);
+                                        LogWrite("110 Please, log off now.\r\n", sw, hostname, perip);
+                                        if (Ban)
                                         {
+                                            var aaa = new Ban();
+                                            aaa.hostname = hostname;
+                                            aaa.time = BanLength;
+                                            bans.Add(aaa);
                                             client.Close();
                                         }
+                                        var a = ReportAsync(hostname, "[" + DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss") + "] " + "RCE Attempt at 21 port using ProFTPd exploit", true, false, false, false, false);
+                                        a.Start();
+
+
 
                                     }
-                                }
-                                if (answ.Contains("php") && triggered)
-                                {
-                                    trigger2 = true; //Second level trigger
-                                }
-                                if (trigger2)
-                                {
-                                    LogWrite("110 Illegal activity was detected.\r\n", sw, hostname, perip);
-                                    LogWrite("110 Please, log off now.\r\n", sw, hostname, perip);
-                                    if (Ban)
-                                    {
-                                        var aaa = new Ban();
-                                        aaa.hostname = hostname;
-                                        aaa.time = BanLength;
-                                        bans.Add(aaa);
-                                        client.Close();
-                                    }
-                                    var a = ReportAsync(hostname, "[" + DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss") + "] " + "RCE Attempt at 21 port using ProFTPd exploit", true, false, false, false, false);
-                                    a.Start();
-
-
 
                                 }
 
                             }
-
-                        }
-                        catch (Exception e)
-                        {
-                            client.Close();
-                            c.Connected = false;
-                        }
-                        Active.SetConnections(hostname, actives, Active.GetConnections(hostname, actives) - 1);
-                        if (PerIPLogs)
-                        {
-                            try
+                            catch (Exception e)
                             {
-                                perips.Remove(perip);
-                                perip.Close();
-                            } catch
-                            {
-
+                                client.Close();
+                                c.Connected = false;
                             }
+                            Active.SetConnections(hostname, actives, Active.GetConnections(hostname, actives) - 1);
+                            if (PerIPLogs)
+                            {
+                                try
+                                {
+                                    perips.Remove(perip);
+                                    perip.Close();
+                                }
+                                catch
+                                {
+
+                                }
+                            }
+                            thread_amount--;
                         }
+                        )).Start();
                     }
-                    )).Start();
+                    else
+                    {
+                        Console.WriteLine("-> ALL FREE THREADS ARE CURRENTLY BUSY! <-");
+                        client.Close();
+                    }
                 }
             }).Start();
             new Thread(() =>
@@ -924,75 +1191,112 @@ namespace BearFTP
                     {
                         pasv_actives.Add(new Active(hostname, 1));
                     }
-                    Thread user = new Thread(new ThreadStart(() =>
+                    if (thread_amount <= MaxThreads)
                     {
-                        Thread.CurrentThread.IsBackground = true;
-
-                        Client c = new Client("1", "2", "3");
-
-                        
-
-                        try
+                        thread_amount++;
+                        Thread user = new Thread(new ThreadStart(() =>
                         {
-                            bool ispresent = false;
-                            foreach (Client cl in connected)
-                            {
-                                if (cl.hostname == hostname && cl.Connected)
-                                {
-                                    c = cl;
-                                    ispresent = true;
-                                }
-                            }
-                            if (!ispresent)
-                            {
-                                client.Close();
+                            Thread.CurrentThread.IsBackground = true;
 
-                            }
-                            else
+                            Client c = new Client("1", "2", "3");
+
+
+
+                            try
                             {
-                                Connectivity ca = new Connectivity();
-                                ca.sr = sr;
-                                ca.sw = sw;
-                                ca.tcp = client;
-                                passives.Add(c, ca);
-                                /*  while (client.Connected)
-                                  {
-                                      Thread.Sleep(3000);
-                                  }*/
-                                for (int i = 0; client.Connected; i++)
+                                bool ispresent = false;
+                                foreach (Client cl in connected)
                                 {
-                                    Thread.Sleep(1000);
-                                    if (i >= 120)
+                                    if (cl.hostname == hostname && cl.Connected)
                                     {
-                                        client.Close();
-                                        passives.Remove(c);
+                                        c = cl;
+                                        ispresent = true;
                                     }
                                 }
-                                client.Close();
-                                passives.Remove(c);
-                            }
-                        }
-                        catch (Exception e)
-                        {
-                            if (!e.Message.StartsWith("An item"))
-                            {
-                                client.Close();
-                                passives.Remove(c);
-                            }
-                        }
-                        Active.SetConnections(hostname, pasv_actives, Active.GetConnections(hostname, pasv_actives) - 1);
-                    }
+                                if (!ispresent)
+                                {
+                                    client.Close();
 
-                    ));
-                    user.Start();
+                                }
+                                else
+                                {
+                                    Connectivity ca = new Connectivity();
+                                    ca.sr = sr;
+                                    ca.sw = sw;
+                                    ca.tcp = client;
+                                    passives.Add(c, ca);
+                                    /*  while (client.Connected)
+                                      {
+                                          Thread.Sleep(3000);
+                                      }*/
+                                    for (int i = 0; client.Connected; i++)
+                                    {
+                                        Thread.Sleep(1000);
+                                        if (i >= 120)
+                                        {
+                                            client.Close();
+                                            passives.Remove(c);
+                                        }
+                                    }
+                                    client.Close();
+                                    passives.Remove(c);
+                                }
+                            }
+                            catch (Exception e)
+                            {
+                                if (!e.Message.StartsWith("An item"))
+                                {
+                                    client.Close();
+                                    passives.Remove(c);
+                                }
+                            }
+                            Active.SetConnections(hostname, pasv_actives, Active.GetConnections(hostname, pasv_actives) - 1);
+                            thread_amount--;
+                        }
+
+                        ));
+                        user.Start();
+                    } else
+                    {
+                        Console.WriteLine("-> ALL FREE THREADS ARE CURRENTLY BUSY! <-");
+                        client.Close();
+                    }
 
 
                 }
             }).Start();
             while (true)
             {
-                string ok = Console.ReadLine();
+                string cmd = Console.ReadLine();
                 //TODO: Internal command handler
+                string[] split = cmd.Split(' ');
+
+                string cmdA = split[0];
+                string cmdB = "";
+                for (int i = 1; i < split.Length; i++)
+                {
+                    cmdB += split[i] + " ";
+                }
+                cmdB = cmdB.Trim();
+
+                switch (cmdA)
+                {
+                    case "Hostname":
+                        config.Hostname = cmdB; Hostname = cmdB; break;
+                    case "Token":
+                        config.Token = cmdB; Token = cmdB; break;
+                    case "Banner":
+                        config.Banner = cmdB; Banner = cmdB; break;
+                    case "Report":
+                        config.Report = StB(cmdB); Report = StB(cmdB); break;
+                    case "Ban":
+                        config.Ban = StB(cmdB); Ban = StB(cmdB); break;
+                    case "MaxThreads":
+                        config.MaxThreads = int.Parse(cmdB); MaxThreads = int.Parse(cmdB); break;
+                    case "MaxErrors":
+                        config.MaxErrors = int.Parse(cmdB); MaxErrors = int.Parse(cmdB); break;
+                }
+                config.Save();
             }
 
         }
@@ -1001,35 +1305,38 @@ namespace BearFTP
         /// </summary>
         private static void InitializeFiles()
         {
-            
+
             if (config.files.Count > 0)
             {
                 foreach (CJSON_FILE json in config.files)
                 {
                     if (!json.Content.StartsWith("---"))
                     {
-                        File file = new File(json.Name, json.Content.Length, "-rw-r--r--", "Dec 1 15:11", json.Content, root);
+                        File file = new File(json.Name, json.Content.Length, "-rw-r--r--", "Dec  1 15:11", json.Content, root);
                         files.Add(file);
-                    } else
+                    }
+                    else
                     {
                         try
                         {
                             var filecontents = System.IO.File.ReadAllBytes(json.Content.Substring(3, json.Content.Length - 3));
-                            File file = new File(json.Name, filecontents.Length, "-rw-r--r--", "Dec 1 15:11", filecontents, root);
+                            File file = new File(json.Name, filecontents.Length, "-rw-r--r--", "Dec  1 15:11", filecontents, root);
                             files.Add(file);
-                        } catch (Exception e)
+                        }
+                        catch (Exception e)
                         {
                             Console.WriteLine(e.Message);
                         }
 
                     }
                 }
-            } else
+            }
+            else
             {
-                File file = new File("readme.txt", 3, "-rw-r--r--", "Dec 1 15:10", "Hi!", root);
+                File file = new File("readme.txt", 3, "-rw-r--r--", "Dec  1 15:10", "Hi!", root);
                 files.Add(file);
             }
-            
+
         }
 
         /// <summary>
@@ -1042,7 +1349,8 @@ namespace BearFTP
             if (file.size <= BufferSize)
             {
                 sw.BaseStream.Write(file.content, 0, file.size);
-            } else
+            }
+            else
             {
                 //Ok boomer
                 //1. We calculate amount of steps (a.k.a how much should we do the loop)
@@ -1056,7 +1364,7 @@ namespace BearFTP
 
                 byte[] buffer = new byte[BufferSize];
                 Steps = Math.DivRem(file.size, BufferSize, out Leftover);
-                for(Offtop = 0; Offtop<Steps; Offtop++)
+                for (Offtop = 0; Offtop < Steps; Offtop++)
                 {
                     Array.Copy(file.content, Offtop * BufferSize, buffer, 0, BufferSize);
                     sw.BaseStream.Write(buffer, 0, buffer.Length);
@@ -1068,6 +1376,13 @@ namespace BearFTP
                 Thread.Sleep(50);
                 return;
             }
+        }
+
+        public static bool StB(string s)
+        {
+            if (s == "true")
+                return true;
+            return false;
         }
     }
 }

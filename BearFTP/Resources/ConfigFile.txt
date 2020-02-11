@@ -9,11 +9,15 @@
   "PunishScans": true,
   "AllowAnonymous": false,
   "PerIPLogs": false,
+  "AnonStat": true,
+  "ConsoleLogging": true,
+  "ActiveMode": true,
   "Max_PerSecond": 5,
   "Max_Total": 6,
   "BanLength": 3600,
   "MaxErrors": 6,
   "BufferSize": 8192,
+  "MaxThreads": 50,
   "Files": [
   {
     "Name": "readme.txt",

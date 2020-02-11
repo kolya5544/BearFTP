@@ -7,6 +7,8 @@ namespace BearFTP
 {
     class Config
     {
+        private string filename = "";
+
         public int PortDef = 21;
         public int PortPasv = 21;
         public string Hostname = "127.0.0.1";
@@ -18,12 +20,16 @@ namespace BearFTP
         public bool PunishScans = true;
         public bool AllowAnonymous = false;
         public bool PerIPLogs = false;
+        public bool AnonStat = true;
+        public bool ConsoleLogging = true;
+        public bool ActiveMode = true;
 
         public int Max_PerSecond = 5;
         public int Max_Total = 6;
         public int BanLength = 3600;
         public int MaxErrors = 6;
         public int BufferSize = 8192;
+        public int MaxThreads = 50;
 
         
 
@@ -61,13 +67,18 @@ namespace BearFTP
                 MaxErrors = json.MaxErrors;
                 BufferSize = json.BufferSize;
                 PerIPLogs = json.PerIPLogs;
+                MaxThreads = json.MaxThreads;
+                ActiveMode = json.ActiveMode;
+                ConsoleLogging = json.ConsoleLogging;
+                AnonStat = json.AnonStat;
                 
 
 
                 //For files handling to go Program.cs
                 files = json.Files;
 
-                
+
+                filename = name;
 
             } catch (JsonReaderException e)
             {
@@ -76,6 +87,32 @@ namespace BearFTP
                 Environment.Exit(1);
             }
             
+        }
+        public void Save()
+        {
+            var saveJSON = new CJSON();
+            saveJSON.PortDef = PortDef;
+            saveJSON.PortPasv = PortPasv;
+            saveJSON.Hostname = Hostname;
+            saveJSON.Token = Token;
+            saveJSON.Banner = Banner;
+            saveJSON.Report = Report;
+            saveJSON.Ban = Ban;
+            saveJSON.PunishScans = PunishScans;
+            saveJSON.AllowAnonymous = AllowAnonymous;
+            saveJSON.PerIPLogs = PerIPLogs;
+            saveJSON.AnonStat = AnonStat;
+            saveJSON.ConsoleLogging = ConsoleLogging;
+            saveJSON.ActiveMode = ActiveMode;
+            saveJSON.Max_PerSecond = Max_PerSecond;
+            saveJSON.Max_Total = Max_Total;
+            saveJSON.BanLength = BanLength;
+            saveJSON.MaxErrors = MaxErrors;
+            saveJSON.BufferSize = BufferSize;
+            saveJSON.MaxThreads = MaxThreads;
+            saveJSON.Files = files;
+            string saveString = JsonConvert.SerializeObject(saveJSON);
+            System.IO.File.WriteAllText(filename, saveString);
         }
     }
 
@@ -96,11 +133,15 @@ namespace BearFTP
         public bool PunishScans { get; set; }
         public bool AllowAnonymous { get; set; }
         public bool PerIPLogs { get; set; }
+        public bool AnonStat { get; set; }
+        public bool ConsoleLogging { get; set; }
+        public bool ActiveMode { get; set; }
         public int Max_PerSecond { get; set; }
         public int Max_Total { get; set; }
         public int BanLength { get; set; }
         public int MaxErrors { get; set; }
         public int BufferSize { get; set; }
+        public int MaxThreads { get; set; }
         public List<CJSON_FILE> Files { get; set; }
     }
 }

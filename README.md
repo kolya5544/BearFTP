@@ -52,11 +52,15 @@ The program should exit with an error. Proceed to editing the **config.json**
   "PunishScans": true,
   "AllowAnonymous": false,
   "PerIPLogs": false,
+  "AnonStat": true,
+  "ConsoleLogging": true,
+  "ActiveMode": true,
   "Max_PerSecond": 5,
   "Max_Total": 6,
   "BanLength": 3600,
   "MaxErrors": 6,
   "BufferSize": 8192,
+  "MaxThreads": 50,
   "Files": [
   {
     "Name": "readme.txt",
@@ -76,11 +80,15 @@ The program should exit with an error. Proceed to editing the **config.json**
 | PunishScans | Should we ban/report nmap scanners? |
 | AllowAnonymous | Should we allow users to login with "anonymous" username? |
 | PerIPLogs | Create logs for individual IPs. Requires "iplogs" folder |
+| AnonStat | Do you want to send anonymous statistics on version usage? (We only see BearFTP version you use. No private info) |
+| ConsoleLogging | Should we log attempts to the console? |
+| ActiveMode | Should we allow Active mode usage? (PORT command) |
 | Max_PerSecond | Max. amount of connections per second from an IP. Only applies to base socket |
 | Max_Total | Max. amount of active connections from an IP. Applies to both base and PASV |
 | BanLength | Length (in seconds) of a ban. 3600 seconds = 1 hour. |
 | MaxErrors | Max.amount of attempts to execute an invalid FTP command. |
 | BufferSize | Buffer size on RETR for files. Somewhere around 2048-8192 is fine. Determines the speed of a download. |
+| MaxThreads | Maximal amount of threads, controlled by clients, that can be spawned by BearFTP |
 | Files[] | Array of files. |
 | Files[Name] | Filename |
 | Files[Content] | Contents of files (string). Start with --- to make it load from a file (example: "---file.exe") |
@@ -96,9 +104,8 @@ We use VS2019 and .NET core 3.1 for development.
 
 Here's our CURRENT todo list:
 - Administrator commands (adding files right through FTP!)
-- Local command handler (execute FTP commands in your console, ban spamming IPs and such)
 - Implement directories
-- Add more features (Active mode, more advanced ban system)
+- Add more features (more advanced ban system, reports to other IP blacklists)
 
 
 License

@@ -9,11 +9,15 @@
   "PunishScans": true,
   "AllowAnonymous": false,
   "PerIPLogs": false,
+  "AnonStat": true,
+  "ConsoleLogging": true,
+  "ActiveMode": true,
   "Max_PerSecond": 4,
   "Max_Total": 5,
   "BanLength": 7200,
   "MaxErrors": 5,
   "BufferSize": 8192,
+  "MaxThreads": 30,
   "Files": [
   {
     "Name": "sqlite.db",
