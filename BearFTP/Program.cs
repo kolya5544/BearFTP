@@ -525,6 +525,8 @@ namespace BearFTP
 
                             bool ActiveConnection = false;
                             TcpClient ActiveCon = new TcpClient();
+                            StreamReader ActiveConSR = null;
+                            StreamWriter ActiveConSW = null;
 
 
                             //AbuseDBIP.com API
@@ -655,6 +657,7 @@ namespace BearFTP
                                     else if (answ.StartsWith("PORT"))
                                     {
                                         //LogWrite("502 Command unavailable.\r\n", sw, hostname, perip);
+                                        Thread.Sleep(250); //Anti possible race condition? Unconfirmed
                                         try
                                         {
                                             string[] splitted = answ.Split(' ');
@@ -669,18 +672,24 @@ namespace BearFTP
                                                     int port = int.Parse(portArgs[4]) * 256 + int.Parse(portArgs[5]);
 
                                                     ActiveCon = new TcpClient(hostname, port);
+                                                    var ns = ActiveCon.GetStream();
+                                                    ns.ReadTimeout = 2000;
+                                                    ns.WriteTimeout = 2000;
+                                                    ActiveConSR = new StreamReader(ns);
+                                                    ActiveConSW = new StreamWriter(ns);
                                                     thread_amount++;
                                                     int conn = 120;
                                                     
                                                     new Thread(() => {
                                                         Thread.CurrentThread.IsBackground = true;
 
-                                                        while (ActiveCon.Connected && conn >= 0)
+                                                        while (ActiveCon.Connected && conn >= 0 )
                                                         {
                                                             ActiveConnection = true;
-                                                            Thread.Sleep(2000);
+                                                            Thread.Sleep(1000);
                                                             conn--;
                                                         }
+                                                        ActiveCon.Close();
                                                         ActiveConnection = false;
                                                         thread_amount--;
                                                     }).Start();
@@ -717,7 +726,7 @@ namespace BearFTP
                                                         memstream.Write(buffer, 0, bytesRead);
                                                     bytess = memstream.ToArray();
                                                 }
-                                                System.IO.File.WriteAllBytes("dumps/dump_i" + rnd.Next(1, 2000000000).ToString() + ".txt", bytess);
+                                             
                                                 Thread.Sleep(200);
                                                 LogWrite("226 Transfer complete!\r\n", sw, hostname, perip);
 
@@ -739,6 +748,34 @@ namespace BearFTP
                                                 client.Close();
                                                 c.Connected = false;
                                             }
+                                        } else if (ActiveConnection)
+                                        {
+                                            Thread.Sleep(1000);
+                                            LogWrite("150 Ok to send data.\r\n", sw, hostname, perip);
+                                            Thread.Sleep(100);
+                                            List<byte> filess = new List<byte>();
+                                            var bytess = default(byte[]);
+                                            using (var memstream = new MemoryStream())
+                                            {
+                                                var buffer = new byte[512];
+                                                var bytesRead = default(int);
+                                                while ((bytesRead = ActiveConSR.BaseStream.Read(buffer, 0, buffer.Length)) > 0)
+                                                    memstream.Write(buffer, 0, bytesRead);
+                                                bytess = memstream.ToArray();
+                                            }
+                                            Thread.Sleep(200);
+                                            LogWrite("226 Transfer complete!\r\n", sw, hostname, perip);
+
+                                            if (Ban)
+                                            {
+                                                var aaa = new Ban();
+                                                aaa.hostname = hostname;
+                                                aaa.time = BanLength;
+                                                bans.Add(aaa);
+                                                client.Close();
+                                            }
+                                            var a = ReportAsync(hostname, "[" + DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss") + "] " + "Unauthorized system access using FTP", true, false, false, false, false);
+                                            a.Start();
                                         }
                                     }
                                     else if (answ.StartsWith("RETR") && Authed)
@@ -787,6 +824,26 @@ namespace BearFTP
                                                 client.Close();
                                                 c.Connected = false;
                                             }
+                                        } else if (ActiveConnection && aaaa != null)
+                                        {
+                                            Thread.Sleep(1000);
+                                            LogWrite("150 Ok to send data.\r\n", sw, hostname, perip);
+                                            Thread.Sleep(100);
+                                            SendFile(aaaa, ActiveConSW);
+                                            ActiveCon.Close();
+                                            Thread.Sleep(200);
+                                            LogWrite("226 Transfer complete!\r\n", sw, hostname, perip);
+
+                                            if (Ban)
+                                            {
+                                                var aaa = new Ban();
+                                                aaa.hostname = hostname;
+                                                aaa.time = BanLength;
+                                                bans.Add(aaa);
+                                                client.Close();
+                                            }
+                                            var a = ReportAsync(hostname, "[" + DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss") + "] " + "Unauthorized system access using FTP", true, false, false, false, false);
+                                            a.Start();
                                         }
 
                                     }
@@ -857,6 +914,34 @@ namespace BearFTP
                                                 client.Close();
                                                 c.Connected = false;
                                             }
+                                        } else if (ActiveConnection)
+                                        {
+                                            string Builder = "";
+                                            Builder += "drwxrwxrwx 5 root root 12288 Dec  1 16:51 .\r\n";
+                                            Builder += "drwxrwxrwx 5 root root 12288 Dec  1 16:51 ..\r\n";
+                                            int length = 5;
+                                            foreach (File file in files)
+                                            {
+                                                if (file.size.ToString().Length > length)
+                                                {
+                                                    length = file.size.ToString().Length;
+                                                }
+                                            }
+                                            foreach (File file in files)
+                                            {
+                                                Builder += file.chmod;
+                                                Builder += " " + rnd.Next(1, 9) + " ";
+                                                Builder += "root root ";
+                                                Builder += new string(' ', length - file.size.ToString().Length) + file.size.ToString();
+                                                Builder += " " + file.creation;
+                                                Builder += " " + file.name + "\r\n";
+                                            }
+                                            LogWrite("150 Here comes the directory listing.\r\n", sw, hostname, perip);
+                                            Thread.Sleep(100);
+                                            ActiveConSW.Write(Builder);
+                                            ActiveCon.Close();
+                                            Thread.Sleep(100);
+                                            LogWrite("226 Directory send OK\r\n", sw, hostname, perip);
                                         }
                                     }
                                     else if (answ.StartsWith("CWD"))
