@@ -362,7 +362,7 @@ namespace BearFTP
             if (PortDef == PortPasv)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("-> You are probably running a default/incorrect config! Please, edit it before starting the server");
+                Console.WriteLine("-> PortDef cannot be equal to PortPasv! (Possibly running default config, please edit config and your firewall rules.)");
                 Console.ResetColor();
                 Environment.Exit(1);
             }
