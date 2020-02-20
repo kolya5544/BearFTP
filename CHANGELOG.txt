@@ -1,11 +1,4 @@
 --> IT ONLY CONTAINS THE MOST RECENT CHANGES!
 
-v0.4.0:
-- Proper mitigation of slow loris base attack by implementing configurable amount of maximal allowed threads to be spawned (def. 50 a.k.a somewhere about 20 clients or 10 bots) (CVE-2020-8815)
-- Anonymous private version usage statistics implemented (toggleable)
-- Active mode implement
-- Local command handler to edit config on-the-fly (see COMMANDS.md)
-- Config option for disabling outputting to console
-- Fix of metasploit exploit not working properly due to temp.limitations
-- Fix of incorrect date in LIST (was broken in some clients)
-- Removal of file dumping function (will be readded back after some code cleanup)
+v0.4.1:
+- Fix of ban DoS

@@ -519,11 +519,14 @@ namespace BearFTP
                         per_second.Add(new Active(hostname, 1));
 
                     }
+                    bool banned = false;
                     try
                     {
                         if (bans.Any(ban => ban.hostname == hostname))
                         {
                             client.Close();
+                            banned = true;
+                            break;
                         }
                     }
                     catch
@@ -561,16 +564,16 @@ namespace BearFTP
                             string comment = "";
 
 
-                            bool banned = false;
-
-
 
 
                             try
                             {
                                 Thread.Sleep(100);
-                                Log("Connected - " + hostname, "in", true, hostname, perip);
-                                LogWrite("220 " + Banner.Replace("%host%", Hostname) + "\r\n", sw, hostname, perip);
+                                if (!banned)
+                                {
+                                    Log("Connected - " + hostname, "in", true, hostname, perip);
+                                    LogWrite("220 " + Banner.Replace("%host%", Hostname) + "\r\n", sw, hostname, perip);
+                                }
 
                                 while (client.Connected)
                                 {
