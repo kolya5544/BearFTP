@@ -573,6 +573,8 @@ namespace BearFTP
                                 {
                                     Log("Connected - " + hostname, "in", true, hostname, perip);
                                     LogWrite("220 " + Banner.Replace("%host%", Hostname) + "\r\n", sw, hostname, perip);
+                                    LogWrite("220 No connection from proxy/Tor client allowed.\r\n", sw, hostname, perip);
+                                    client.Close();
                                 }
 
                                 while (client.Connected)
